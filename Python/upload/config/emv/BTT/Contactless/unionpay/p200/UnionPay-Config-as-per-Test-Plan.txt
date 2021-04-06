@@ -1,0 +1,35 @@
+5.1 Terminal Transaction Qualifier (Tag ‘9F66’)
+
+Terminal Transaction Qualifier (TTQ) shall be set as following:
+
+Byte 1
+
+bit 8: 0 = RFU
+bit 7: 0 = not supporting Contactless UICC
+bit 6: 1 = supporting Contactless qUICC
+bit 5: X = According to the type of terminals
+bit 4: 0 = terminal has online capacity
+bit 3: 1 = supporting online PIN
+bit 2: 1 = supporting signature
+bit 1: 0 = RFU
+
+Byte 2
+
+bit 8  : 1 = requiring online cryptogram
+bit 7  : 0 = do not request CVM by default
+bit 6-1: 0 = RFU
+
+Byte 3
+
+bit 8: 1 = RFU 
+bit 7: 1 = Mobile functionality supported (Consumer Device CVM) 
+bit 6: 1 = RFU (000000)
+
+Byte 4
+
+bit 8  : 1 = fDDA version '01' supported 0 = only fDDA version '00' supported 
+bit 7-1: 0 = RFU
+
+
+ACTUAL  : 36 10 00 80
+PROPOSED: 36 80 XX XX

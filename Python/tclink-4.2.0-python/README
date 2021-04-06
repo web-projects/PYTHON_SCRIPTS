@@ -1,0 +1,70 @@
+Some countries have regulations on the use of cryptographic libraries
+like the ones embedded in TCLink. It may be unlawful to download TCLink
+in these countries.
+
+
+                                 TCLink v4.2.0
+                            Python Implementation
+                       copyright (C) TrustCommerce 2015
+                         http://www.trustcommerce.com
+                         techsupport@trustcommerce.com
+
+                                October 1, 2015
+
+I. DESCRIPTION
+
+  TCLink is a thin client library to allow your e-commerce servers to
+connect to the TrustCommerce payment gateway easily and consistently.
+The protocol (which is the same across all platforms and languages) is
+well-documented in the Web Developer's Guide, so please consult it for
+any questions you may have about the protocol syntax itself.
+
+  If you are using Python on Win32, do not use this client.  Please
+download the COM object from the Vault website instead and use the
+win32com interface to access our COM object.  A tutorial on this can
+be found here: 
+
+http://aspn.activestate.com/ASPN/docs/ActivePython/2.4/pywin32/html/com/win32com/HTML/QuickStartClientCom.html
+
+  TCLink was originally ported to Python by Brian Shirk.  You can
+contact him at brian-tclink@stech.cx.
+
+
+II. LICENSE
+
+  TCLink for Python is released under the GNU LGPL.  Please read LICENSE
+for details.
+
+
+III. REQUIREMENTS
+
+  You need to have the OpenSSL development libraries installed, with
+the include files accessible in the include path and the library
+files accessible in the library path.  If you are using an RPM-based
+Linux, the OpenSSL RPMs from ftp.openssl.com are recommended.
+
+  You also need a working install of Python, and the related
+development package(s). 
+
+
+IV. INSTALLATION
+
+  Installation is based on the python distutils system. To install,
+  as root type:
+    
+    python setup.py install
+
+  For non-root install, type:
+
+    python setup.py build_ext -i
+
+  This will build the extension in the current directory, allowing
+  tctest.py and other scripts to access it.
+
+VI. USAGE
+
+  The tctest.py shows a simple example of calling TCLink from
+Python.  For further information, please consult the TC Developer's
+Guide found in the doc subdirectory.
+
+

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?><?xml-stylesheet type="text/xsl" href="testharness.xsl"?><testharness><message><timestamp>2021-04-01 17:51:04.875761</timestamp><level>error</level><value>Traceback (most recent call last):
+  File "C:\TCPython\TC_testharness\utility.py", line 96, in do_testharness
+    t()
+  File "TC_transtest_all_autoselect_EMV.py", line 2128, in processTransaction
+    TC_TCLink.setTerminalCapabilities(tlv.getTag((0x84))[0], tlv.getTag((0x9F, 0x33))[0])
+AttributeError: module 'TC_TCLink' has no attribute 'setTerminalCapabilities'
+ </value></message></testharness>

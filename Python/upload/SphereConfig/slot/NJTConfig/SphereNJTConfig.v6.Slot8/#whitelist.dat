@@ -1,0 +1,8 @@
+WHITELIST^/WHITELIST_FILE_VERSION=1
+
+# Line format: 
+# VSD_BINSTART^/VSD_BINEND^/VSD_PAN_LEN^/VSD_MASKING_SCHEME_ID^/VSD_KEY_SLOT_ENGINE
+# Last field (VSD_KEY_SLOT_ENGINE) is optional, when it's not defined, default key slot will be used
+
+# Disable NJT Maintenance BIN range
+891125^/891125^/0^/NM

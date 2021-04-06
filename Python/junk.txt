@@ -1,0 +1,18 @@
+ Volume in drive C is Windows
+ Volume Serial Number is B46D-ECAF
+
+ Directory of C:\Python\upload\keys\VRK
+
+10/02/2020  10:37 AM    <DIR>          .
+10/02/2020  10:37 AM    <DIR>          ..
+10/02/2020  10:31 AM    <DIR>          backup
+09/25/2020  10:20 AM             2,594 RTC510_275-209-472.tgz
+09/25/2020  10:20 AM             2,592 RTC54_275-209-472.tgz
+09/25/2020  10:21 AM             2,588 RTC56_275-209-472.tgz
+09/25/2020  10:22 AM             2,599 RTC58_275-209-472.tgz
+10/01/2020  03:46 PM             2,592 RTC610_275-209-472.tgz
+10/01/2020  03:47 PM             2,594 RTC64_275-209-472.tgz
+10/01/2020  03:50 PM             2,590 RTC66_275-209-472.tgz
+10/01/2020  03:51 PM             2,593 RTC68_275-209-472.tgz
+               8 File(s)         20,742 bytes
+               3 Dir(s)  119,449,333,760 bytes free

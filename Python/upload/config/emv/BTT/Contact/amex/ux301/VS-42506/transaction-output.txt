@@ -1,0 +1,479 @@
+2020-09-10 15:51:08.174> **** WAIT FOR CARD INSERTION / TAP / SWIPE **** 
+2020-09-10 15:51:15.515> IN: b'e004480200009000' 
+2020-09-10 15:51:15.516| recv> STATUS=9000 [OK]
+data: [12]
+hex|e00448020000
+ascii|..H...
+frames : [1]
+frame|014008e00448020000900077
+template E0 [Data Elements]
+tag 48 [Card Status Information]
+hex|0000
+ascii|..
+2020-09-10 15:51:15.526> Waiting for next occurrance!
+2020-09-10 15:51:20.560> IN: b'e004480203009000' 
+2020-09-10 15:51:20.561| recv> STATUS=9000 [OK]
+data: [12]
+hex|e00448020300
+ascii|..H...
+frames : [1]
+frame|014008e00448020300900074
+template E0 [Data Elements]
+tag 48 [Card Status Information]
+hex|0300
+ascii|..
+2020-09-10 15:51:20.573> Card inserted!
+2020-09-10 15:51:20.574> Cancelling contactless
+2020-09-10 15:51:20.588> -- SE --False 
+2020-09-10 15:51:20.589| send> CLA|INS|P1|P2=c0c00000 [Cancel Contactless Transaction]
+data: [None]
+frames : [1]
+frame|010004c0c0000005
+2020-09-10 15:51:20.915> IN: b'9000' 
+2020-09-10 15:51:20.917| recv> STATUS=9000 [OK]
+data: [None]
+frames : [1]
+frame|010002900093
+2020-09-10 15:51:22.246> IN: b'dfdf3001fb9000' 
+2020-09-10 15:51:22.248| recv> STATUS=9000 [OK]
+data: [10]
+hex|dfdf3001fb
+ascii|..0..
+frames : [1]
+frame|014007dfdf3001fb90001c
+2020-09-10 15:51:22.253> Card inserted, process EMV transaction!
+2020-09-10 15:51:22.254> -- SE --False 
+2020-09-10 15:51:22.257| send> CLA|INS|P1|P2=ded10000 [Start Transaction]
+data: [90]
+hex|ded1000028e0269f02060000000035509a032009109c01009f21031550425f2a020840dfa2180100dfa2140101
+ascii|....(.&.......5P.. ......!..PB_*..@..........
+frames : [1]
+frame|01002dded1000028e0269f02060000000035509a032009109c01009f21031550425f2a020840dfa2180100dfa214010186     
+template E0 [Data Elements]
+tag 9f02 [Amount Authorised (Numeric)]
+hex|000000003550
+ascii|....5P
+tag 9a [Transaction Date]
+hex|200910
+ascii| ..
+tag 9c [Transaction Type]
+hex|00
+ascii|.
+tag 9f21 [Transaction Time]
+hex|155042
+ascii|.PB
+tag 5f2a [Transaction Currency Code]
+hex|0840
+ascii|.@
+tag dfa218 [NA]
+hex|00
+ascii|.
+tag dfa214 [NA]
+hex|01
+ascii|.
+2020-09-10 15:51:29.730> IN: b'e281acff7f46dfdf120809a3868b043079bcdfdf110affff987654011a60068edfdf102037c1c7a5b8a12c656fb4ec608a7e1e25c8484f399f7e42efb6734f91f6d9cd6ddfdb0f04000000005010414d45524943414e20455850524553535713374245aaaaaaaaad24122010000000000000005a08374245aaaaaaaaaf5f24032412315f25031710015f280208265f300202015f3401009f0606a000000025019f0702ff009f080200019f090200019000'
+2020-09-10 15:51:29.735| recv> STATUS=9000 [OK]
+data: [350]
+hex|e281acff7f46dfdf120809a3868b043079bcdfdf110affff987654011a60068edfdf102037c1c7a5b8a12c656fb4ec608a7e1e25c8484f399f7e42efb6734f91f6d9cd6ddfdb0f04000000005010414d45524943414e20455850524553535713374245aaaaaaaaad24122010000000000000005a08374245aaaaaaaaaf5f24032412315f25031710015f280208265f300202015f3401009f0606a000000025019f0702ff009f080200019f09020001
+ascii|....F.........0y........vT..`..... 7.....,eo..`.~.%.HO9.~B..sO....m........P.AMERICAN EXPRESSW.7BE....
+.$. ........Z.7BE....._$.$.1_%...._(..&_0..._4.........%................
+frames : [1]
+frame|0100b1e281acff7f46dfdf120809a3868b043079bcdfdf110affff987654011a60068edfdf102037c1c7a5b8a12c656fb4ec608a7e1e25c8484f399f7e42efb6734f91f6d9cd6ddfdb0f04000000005010414d45524943414e20455850524553535713374245aaaaaaaaad24122010000000000000005a08374245aaaaaaaaaf5f24032412315f25031710015f280208265f300202015f3401009f0606a000000025019f0702ff009f080200019f0902000190006c
+template E2 [Decision Required]
+tag ff7f [NA]
+hex|dfdf120809a3868b043079bcdfdf110affff987654011a60068edfdf102037c1c7a5b8a12c656fb4ec608a7e1e25c8484f399f7e42efb6734f91f6d9cd6ddfdb0f0400000000
+ascii|.........0y........vT..`..... 7.....,eo..`.~.%.HO9.~B..sO....m........
+tag 50 [Application Label]
+hex|414d45524943414e2045585052455353
+ascii|AMERICAN EXPRESS
+tag 57 [Track2 Equivalent Data]
+hex|374245aaaaaaaaad2412201000000000000000
+ascii|7BE.....$. ........
+tag 5a [Application Primary Account Number (PAN)]
+hex|374245aaaaaaaaaf
+ascii|7BE.....
+tag 5f24 [Application Expiration Date]
+hex|241231
+ascii|$.1
+tag 5f25 [Application Effective Data]
+hex|171001
+ascii|...
+tag 5f28 [Issuer Country Code]
+hex|0826
+ascii|.&
+tag 5f30 [Service Code]
+hex|0201
+ascii|..
+tag 5f34 [Application Primary Account Number (PAN) Sequence Number]
+hex|00
+ascii|.
+tag 9f06 [Application Identifier (AID) - Terminal]
+hex|a00000002501
+ascii|....%.
+tag 9f07 [Application Usage Control]
+hex|ff00
+ascii|..
+tag 9f08 [Application Version Number - ICC]
+hex|0001
+ascii|..
+tag 9f09 [Application Version Number - Terminal]
+hex|0001
+ascii|..
+>>> saveCardData save data
+>> before continue:  TPL E2
+        TAG FF7F -> bytearray(b'\xdf\xdf\x12\x08\t\xa3\x86\x8b\x040y\xbc\xdf\xdf\x11\n\xff\xff\x98vT\x01\x1a`\x06\x8e\xdf\xdf\x10 7\xc1\xc7\xa5\xb8\xa1,eo\xb4\xec`\x8a~\x1e%\xc8HO9\x9f~B\xef\xb6sO\x91\xf6\xd9\xcdm\xdf\xdb\x0f\x04\x00\x00\x00\x00')
+        TAG 50 -> bytearray(b'AMERICAN EXPRESS')
+        TAG 57 -> bytearray(b'7BE\xaa\xaa\xaa\xaa\xad$\x12 \x10\x00\x00\x00\x00\x00\x00\x00')
+        TAG 5A -> bytearray(b'7BE\xaa\xaa\xaa\xaa\xaf')
+        TAG 5F24 -> bytearray(b'$\x121')
+        TAG 5F25 -> bytearray(b'\x17\x10\x01')
+        TAG 5F28 -> bytearray(b'\x08&')
+        TAG 5F30 -> bytearray(b'\x02\x01')
+        TAG 5F34 -> bytearray(b'\x00')
+        TAG 9F06 -> bytearray(b'\xa0\x00\x00\x00%\x01')
+        TAG 9F07 -> bytearray(b'\xff\x00')
+        TAG 9F08 -> bytearray(b'\x00\x01')
+        TAG 9F09 -> bytearray(b'\x00\x01')
+
+2020-09-10 15:51:29.894> >>  EMV_TAGS skipped  b'ff7f' = b'dfdf120809a3868b043079bcdfdf110affff987654011a60068edfdf102037c1c7a5b8a12c656fb4ec608a7e1e25c8484f399f7e42efb6734f91f6d9cd6ddfdb0f0400000000'
+2020-09-10 15:51:29.896> >>  EMV_TAGS skipped  b'57' = b'374245aaaaaaaaad2412201000000000000000'
+2020-09-10 15:51:29.899> >>  EMV_TAGS skipped  b'5a' = b'374245aaaaaaaaaf'
+2020-09-10 15:51:29.900> >>  EMV_TAGS skipped  b'5f25' = b'171001'
+>> AID is  b'A00000002501'
+>> processing code credit
+2020-09-10 15:51:29.903> CONTINUE TRANSACTION: FIRST PASS ---------------------------------------------------------------------
+2020-09-10 15:51:29.928> -- SE --False 
+2020-09-10 15:51:29.931| send> CLA|INS|P1|P2=ded20100 [Continue Transaction]
+data: [80]
+hex|ded2010023e0219f02060000000035505f2a0208408901008a025a33c00100c2023635dfcc790101
+ascii|....#.!.......5P_*..@.....Z3.....65..y..
+frames : [1]
+frame|010028ded2010023e0219f02060000000035505f2a0208408901008a025a33c00100c2023635dfcc79010106
+template E0 [Data Elements]
+tag 9f02 [Amount Authorised (Numeric)]
+hex|000000003550
+ascii|....5P
+tag 5f2a [Transaction Currency Code]
+hex|0840
+ascii|.@
+tag 89 [Authorisation Code]
+hex|00
+ascii|.
+tag 8a [Authorisation Response Code]
+hex|5a33
+ascii|Z3
+tag c0 [NA]
+hex|00
+ascii|.
+tag c2 [NA]
+hex|3635
+ascii|65
+tag dfcc79 [NA]
+hex|01
+ascii|.
+2020-09-10 15:51:32.406> IN: b'e081baff7f46dfdf120809a3868b043079bcdfdf110affff987654011a60068edfdf102037c1c7a5b8a12c656fb4ec608a7e1e25c8484f399f7e42efb6734f91f6d9cd6ddfdb0f04000000005a08374245aaaaaaaaaf82023c00950508000000009b02c0009c01005f2a0208409f02060000000035509f0d05bc50eca8009f0e0500000000009f0f05bc78fcf8009f3303e0b8c89f34035e03009f3501259f37049b4b07095f24032412315f25031710014f06a000000025018a025a339000'
+2020-09-10 15:51:32.409| recv> STATUS=9000 [OK]
+data: [378]
+hex|e081baff7f46dfdf120809a3868b043079bcdfdf110affff987654011a60068edfdf102037c1c7a5b8a12c656fb4ec608a7e1e25c8484f399f7e42efb6734f91f6d9cd6ddfdb0f04000000005a08374245aaaaaaaaaf82023c00950508000000009b02c0009c01005f2a0208409f02060000000035509f0d05bc50eca8009f0e0500000000009f0f05bc78fcf8009f3303e0b8c89f34035e03009f3501259f37049b4b07095f24032412315f25031710014f06a000000025018a025a33
+ascii|....F.........0y........vT..`..... 7.....,eo..`.~.%.HO9.~B..sO....m........Z.7BE.......<..............
+._*..@.......5P....P...............x....3.....4.^...5.%.7..K.._$.$.1_%....O.....%...Z3
+frames : [1]
+frame|0100bfe081baff7f46dfdf120809a3868b043079bcdfdf110affff987654011a60068edfdf102037c1c7a5b8a12c656fb4ec608a7e1e25c8484f399f7e42efb6734f91f6d9cd6ddfdb0f04000000005a08374245aaaaaaaaaf82023c00950508000000009b02c0009c01005f2a0208409f02060000000035509f0d05bc50eca8009f0e0500000000009f0f05bc78fcf8009f3303e0b8c89f34035e03009f3501259f37049b4b07095f24032412315f25031710014f06a000000025018a025a33900068
+template E0 [Data Elements]
+tag ff7f [NA]
+hex|dfdf120809a3868b043079bcdfdf110affff987654011a60068edfdf102037c1c7a5b8a12c656fb4ec608a7e1e25c8484f399f7e42efb6734f91f6d9cd6ddfdb0f0400000000
+ascii|.........0y........vT..`..... 7.....,eo..`.~.%.HO9.~B..sO....m........
+tag 5a [Application Primary Account Number (PAN)]
+hex|374245aaaaaaaaaf
+ascii|7BE.....
+tag 82 [Application Interchange Profile]
+hex|3c00
+ascii|<.
+tag 95 [Terminal Verification Results]
+hex|0800000000
+ascii|.....
+tag 9b [Transaction Status Information]
+hex|c000
+ascii|..
+tag 9c [Transaction Type]
+hex|00
+ascii|.
+tag 5f2a [Transaction Currency Code]
+hex|0840
+ascii|.@
+tag 9f02 [Amount Authorised (Numeric)]
+hex|000000003550
+ascii|....5P
+tag 9f0d [Issuer Action Code - Default]
+hex|bc50eca800
+ascii|.P...
+tag 9f0e [Issuer Action Code - Denial]
+hex|0000000000
+ascii|.....
+tag 9f0f [Issuer Action Code - Online]
+hex|bc78fcf800
+ascii|.x...
+tag 9f33 [Terminal Capabilities]
+hex|e0b8c8
+ascii|...
+tag 9f34 [Cardholder Verification Method (CVM) Results]
+hex|5e0300
+ascii|^..
+tag 9f35 [Terminal Type]
+hex|25
+ascii|%
+tag 9f37 [Unpredictable Number]
+hex|9b4b0709
+ascii|.K..
+tag 5f24 [Application Expiration Date]
+hex|241231
+ascii|$.1
+tag 5f25 [Application Effective Data]
+hex|171001
+ascii|...
+tag 4f [Application Identifier (AID) - Card]
+hex|a00000002501
+ascii|....%.
+tag 8a [Authorisation Response Code]
+hex|5a33
+ascii|Z3
+>> after continue first pass:  TPL E0
+        TAG FF7F -> bytearray(b'\xdf\xdf\x12\x08\t\xa3\x86\x8b\x040y\xbc\xdf\xdf\x11\n\xff\xff\x98vT\x01\x1a`\x06\x8e\xdf\xdf\x10 7\xc1\xc7\xa5\xb8\xa1,eo\xb4\xec`\x8a~\x1e%\xc8HO9\x9f~B\xef\xb6sO\x91\xf6\xd9\xcdm\xdf\xdb\x0f\x04\x00\x00\x00\x00')
+        TAG 5A -> bytearray(b'7BE\xaa\xaa\xaa\xaa\xaf')
+        TAG 82 -> bytearray(b'<\x00')
+        TAG 95 -> bytearray(b'\x08\x00\x00\x00\x00')
+        TAG 9B -> bytearray(b'\xc0\x00')
+        TAG 9C -> bytearray(b'\x00')
+        TAG 5F2A -> bytearray(b'\x08@')
+        TAG 9F02 -> bytearray(b'\x00\x00\x00\x005P')
+        TAG 9F0D -> bytearray(b'\xbcP\xec\xa8\x00')
+        TAG 9F0E -> bytearray(b'\x00\x00\x00\x00\x00')
+        TAG 9F0F -> bytearray(b'\xbcx\xfc\xf8\x00')
+        TAG 9F33 -> bytearray(b'\xe0\xb8\xc8')
+        TAG 9F34 -> bytearray(b'^\x03\x00')
+        TAG 9F35 -> bytearray(b'%')
+        TAG 9F37 -> bytearray(b'\x9bK\x07\t')
+        TAG 5F24 -> bytearray(b'$\x121')
+        TAG 5F25 -> bytearray(b'\x17\x10\x01')
+        TAG 4F -> bytearray(b'\xa0\x00\x00\x00%\x01')
+        TAG 8A -> bytearray(b'Z3')
+
+2020-09-10 15:51:32.578> CONTINUE TRANSACTION: SECOND PASS --------------------------------------------------------------------
+2020-09-10 15:51:32.579> -- SE --False 
+2020-09-10 15:51:32.580| send> CLA|INS|P1|P2=ded20100 [Continue Transaction]
+data: [None]
+frames : [1]
+frame|010004ded2010008
+2020-09-10 15:51:36.451> IN: b'e481d8ff7f46dfdf120809a3868b043079bcdfdf110affff987654011a60068edfdf102037c1c7a5b8a12c656fb4ec608a7e1e25c8484f399f7e42efb6734f91f6d9cd6ddfdb0f04000000005a08374245aaaaaaaaaf82023c00950518000080009b02e8009c01005f2a0208409f02060000000035509f0d05bc50eca8009f0e0500000000009f0f05bc78fcf8009f100706020103a000009f2608bae153d08fe0763f9f2701809f3303e0b8c89f34035e03009f3501259f360206019f37049b4b07095f24032412315f25031710014f06a000000025018a025a339000'
+2020-09-10 15:51:36.469| recv> STATUS=9000 [OK]
+data: [438]
+hex|e481d8ff7f46dfdf120809a3868b043079bcdfdf110affff987654011a60068edfdf102037c1c7a5b8a12c656fb4ec608a7e1e25c8484f399f7e42efb6734f91f6d9cd6ddfdb0f04000000005a08374245aaaaaaaaaf82023c00950518000080009b02e8009c01005f2a0208409f02060000000035509f0d05bc50eca8009f0e0500000000009f0f05bc78fcf8009f100706020103a000009f2608bae153d08fe0763f9f2701809f3303e0b8c89f34035e03009f3501259f360206019f37049b4b07095f24032412315f25031710014f06a000000025018a025a33
+ascii|....F.........0y........vT..`..... 7.....,eo..`.~.%.HO9.~B..sO....m........Z.7BE.......<..............
+._*..@.......5P....P...............x..............&...S...v?.'...3.....4.^...5.%.6....7..K.._$.$.1_%....O.....%...Z3
+frames : [1]
+frame|0100dde481d8ff7f46dfdf120809a3868b043079bcdfdf110affff987654011a60068edfdf102037c1c7a5b8a12c656fb4ec608a7e1e25c8484f399f7e42efb6734f91f6d9cd6ddfdb0f04000000005a08374245aaaaaaaaaf82023c00950518000080009b02e8009c01005f2a0208409f02060000000035509f0d05bc50eca8009f0e0500000000009f0f05bc78fcf8009f100706020103a000009f2608bae153d08fe0763f9f2701809f3303e0b8c89f34035e03009f3501259f360206019f37049b4b07095f24032412315f25031710014f06a000000025018a025a33900020
+template E4 [Online Action Required]
+tag ff7f [NA]
+hex|dfdf120809a3868b043079bcdfdf110affff987654011a60068edfdf102037c1c7a5b8a12c656fb4ec608a7e1e25c8484f399f7e42efb6734f91f6d9cd6ddfdb0f0400000000
+ascii|.........0y........vT..`..... 7.....,eo..`.~.%.HO9.~B..sO....m........
+tag 5a [Application Primary Account Number (PAN)]
+hex|374245aaaaaaaaaf
+ascii|7BE.....
+tag 82 [Application Interchange Profile]
+hex|3c00
+ascii|<.
+tag 95 [Terminal Verification Results]
+hex|1800008000
+ascii|.....
+tag 9b [Transaction Status Information]
+hex|e800
+ascii|..
+tag 9c [Transaction Type]
+hex|00
+ascii|.
+tag 5f2a [Transaction Currency Code]
+hex|0840
+ascii|.@
+tag 9f02 [Amount Authorised (Numeric)]
+hex|000000003550
+ascii|....5P
+tag 9f0d [Issuer Action Code - Default]
+hex|bc50eca800
+ascii|.P...
+tag 9f0e [Issuer Action Code - Denial]
+hex|0000000000
+ascii|.....
+tag 9f0f [Issuer Action Code - Online]
+hex|bc78fcf800
+ascii|.x...
+tag 9f10 [Issuer Application Data]
+hex|06020103a00000
+ascii|.......
+tag 9f26 [Application Cryptogram]
+hex|bae153d08fe0763f
+ascii|..S...v?
+tag 9f27 [Cryptogram Information Data]
+hex|80
+ascii|.
+tag 9f33 [Terminal Capabilities]
+hex|e0b8c8
+ascii|...
+tag 9f34 [Cardholder Verification Method (CVM) Results]
+hex|5e0300
+ascii|^..
+tag 9f35 [Terminal Type]
+hex|25
+ascii|%
+tag 9f36 [Application Transaction Counter (ATC)]
+hex|0601
+ascii|..
+tag 9f37 [Unpredictable Number]
+hex|9b4b0709
+ascii|.K..
+tag 5f24 [Application Expiration Date]
+hex|241231
+ascii|$.1
+tag 5f25 [Application Effective Data]
+hex|171001
+ascii|...
+tag 4f [Application Identifier (AID) - Card]
+hex|a00000002501
+ascii|....%.
+tag 8a [Authorisation Response Code]
+hex|5a33
+ascii|Z3
+Encrypted pin/ksn
+>> EMV: len(EMV_TAGS) 9
+Override tags used:
+   emv_9f53_transactioncategorycode Prior value was: <none>  New value is: 52
+   emv_kernel_version Prior value was: <none>  New value is: 0488
+   emv_9f1a_terminalcountrycode Prior value was: <none>  New value is: 0840
+   emv_9f21_transactiontime Prior value was: <none>  New value is: 155136
+   emv_9a_transactiondate Prior value was: <none>  New value is: 200910
+End override tags
+Status: error
+TransID: 092-0000038361
+AuthCode:
+2020-09-10 15:51:37.283> PIN response: error
+2020-09-10 15:51:37.293> >>  EMV_TAGS skipped  b'ff7f' = b'dfdf120809a3868b043079bcdfdf110affff987654011a60068edfdf102037c1c7a5b8a12c656fb4ec608a7e1e25c8484f399f7e42efb6734f91f6d9cd6ddfdb0f0400000000'
+2020-09-10 15:51:37.295> >>  EMV_TAGS skipped  b'5a' = b'374245aaaaaaaaaf'
+2020-09-10 15:51:37.297> >>  EMV_TAGS skipped  b'5f25' = b'171001'
+>> AID is  b'A00000002501'
+>> processing code credit
+>> ONLINE ACTION REQUIRED After Continue Second Pass:  TPL E4
+        TAG FF7F -> bytearray(b'\xdf\xdf\x12\x08\t\xa3\x86\x8b\x040y\xbc\xdf\xdf\x11\n\xff\xff\x98vT\x01\x1a`\x06\x8e\xdf\xdf\x10 7\xc1\xc7\xa5\xb8\xa1,eo\xb4\xec`\x8a~\x1e%\xc8HO9\x9f~B\xef\xb6sO\x91\xf6\xd9\xcdm\xdf\xdb\x0f\x04\x00\x00\x00\x00')
+        TAG 5A -> bytearray(b'7BE\xaa\xaa\xaa\xaa\xaf')
+        TAG 82 -> bytearray(b'<\x00')
+        TAG 95 -> bytearray(b'\x18\x00\x00\x80\x00')
+        TAG 9B -> bytearray(b'\xe8\x00')
+        TAG 9C -> bytearray(b'\x00')
+        TAG 5F2A -> bytearray(b'\x08@')
+        TAG 9F02 -> bytearray(b'\x00\x00\x00\x005P')
+        TAG 9F0D -> bytearray(b'\xbcP\xec\xa8\x00')
+        TAG 9F0E -> bytearray(b'\x00\x00\x00\x00\x00')
+        TAG 9F0F -> bytearray(b'\xbcx\xfc\xf8\x00')
+        TAG 9F10 -> bytearray(b'\x06\x02\x01\x03\xa0\x00\x00')
+        TAG 9F26 -> bytearray(b'\xba\xe1S\xd0\x8f\xe0v?')
+        TAG 9F27 -> bytearray(b'\x80')
+        TAG 9F33 -> bytearray(b'\xe0\xb8\xc8')
+        TAG 9F34 -> bytearray(b'^\x03\x00')
+        TAG 9F35 -> bytearray(b'%')
+        TAG 9F36 -> bytearray(b'\x06\x01')
+        TAG 9F37 -> bytearray(b'\x9bK\x07\t')
+        TAG 5F24 -> bytearray(b'$\x121')
+        TAG 5F25 -> bytearray(b'\x17\x10\x01')
+        TAG 4F -> bytearray(b'\xa0\x00\x00\x00%\x01')
+        TAG 8A -> bytearray(b'Z3')
+
+2020-09-10 15:51:37.331> -- SE --False 
+2020-09-10 15:51:37.332| send> CLA|INS|P1|P2=d2010e01 [Display Command]
+data: [None]
+frames : [1]
+frame|010004d2010e01d9
+2020-09-10 15:51:37.587> IN: b'9000' 
+2020-09-10 15:51:37.588| recv> STATUS=9000 [OK]
+data: [None]
+frames : [1]
+frame|010002900093
+2020-09-10 15:51:37.595> *** REMOVE CARD WAIT *** 
+2020-09-10 15:51:40.903> IN: b'e004480200009000' 
+2020-09-10 15:51:40.903| recv> STATUS=9000 [OK]
+data: [12]
+hex|e00448020000
+ascii|..H...
+frames : [1]
+frame|014008e00448020000900077
+template E0 [Data Elements]
+tag 48 [Card Status Information]
+hex|0000
+ascii|..
+2020-09-10 15:51:40.913> -- SE --False 
+2020-09-10 15:51:40.915| send> CLA|INS|P1|P2=d2010101 [Display Command]
+data: [None]
+frames : [1]
+frame|010004d2010101d6
+2020-09-10 15:51:40.937> Online PIN transaction: error
+2020-09-10 15:51:40.939> -- SE --False 
+2020-09-10 15:51:40.941| send> CLA|INS|P1|P2=d0600100 [Card Status]
+data: [None]
+frames : [1]
+frame|010004d0600100b4
+2020-09-10 15:51:41.184> IN: b'9000' 
+2020-09-10 15:51:41.186| recv> STATUS=9000 [OK]
+data: [None]
+frames : [1]
+frame|010002900093
+2020-09-10 15:51:41.193> -- SE --False 
+2020-09-10 15:51:41.195| send> CLA|INS|P1|P2=d2010201 [Display Command]
+data: [None]
+frames : [1]
+frame|010004d2010201d5
+>> EMV: len(EMV_TAGS) 33
+Override tags used:
+   emv_9f53_transactioncategorycode Prior value was: 52  New value is: 52
+   emv_kernel_version Prior value was: 0488  New value is: 0488
+   emv_9f1a_terminalcountrycode Prior value was: 0840  New value is: 0840
+   emv_9f21_transactiontime Prior value was: 155136  New value is: 155144
+   emv_9a_transactiondate Prior value was: 200910  New value is: 200910
+End override tags
+Status: baddata
+TransID:
+AuthCode:
+TSI: E800
+2020-09-10 15:51:44.374> -- SE --False 
+2020-09-10 15:51:44.376| send> CLA|INS|P1|P2=d2010001 [Display Command]
+data: [28]
+hex|d2010001090d0942414444415441
+ascii|.......BADDATA
+frames : [1]
+frame|01000ed2010001090d094241444441544187
+2020-09-10 15:51:44.393> IN: b'e004480200009000' 
+2020-09-10 15:51:44.394| recv> STATUS=9000 [OK]
+data: [12]
+hex|e00448020000
+ascii|..H...
+frames : [1]
+frame|014008e00448020000900077
+template E0 [Data Elements]
+tag 48 [Card Status Information]
+hex|0000
+ascii|..
+2020-09-10 15:51:44.428> Unsolicited packet detected:  TPL E0
+        TAG 48 -> bytearray(b'\x00\x00')
+
+2020-09-10 15:51:44.439> IN: b'9000'
+2020-09-10 15:51:44.440| recv> STATUS=9000 [OK]
+data: [None]
+frames : [1]
+frame|010002900093
+2020-09-10 15:51:49.445> -- SE --False
+2020-09-10 15:51:49.446| send> CLA|INS|P1|P2=d2010100 [Display Command]
+data: [None]
+frames : [1]
+frame|010004d2010100d7
+2020-09-10 15:51:49.452> *** RESET DISPLAY ***
+2020-09-10 15:51:49.453> IN: b'9000'
+2020-09-10 15:51:49.454| recv> STATUS=9000 [OK]
+data: [None]
+frames : [1]
+frame|010002900093

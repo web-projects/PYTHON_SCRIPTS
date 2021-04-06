@@ -1,0 +1,9 @@
+--tcp-client
+terminal:16107
+ssl
+--ca
+certs/ca.pem
+--cert
+certs/server.pem
+--key
+certs/key.pem

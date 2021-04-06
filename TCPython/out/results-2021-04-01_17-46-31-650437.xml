@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?><?xml-stylesheet type="text/xsl" href="testharness.xsl"?><testharness><message><timestamp>2021-04-01 17:47:21.405750</timestamp><level>error</level><value>Traceback (most recent call last):
+  File "C:\TCPython\TC_testharness\utility.py", line 96, in do_testharness
+    t()
+  File "TC_transtest_all_autoselect_EMV.py", line 2154, in processTransaction
+    TC_TCLink.saveEMVData(tlv, 0xE4)
+  File "C:\TCPython\TC_TCLink.py", line 354, in saveEMVData
+    aid_value = tag[2]
+IndexError: list index out of range
+ </value></message></testharness>

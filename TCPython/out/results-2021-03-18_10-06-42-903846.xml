@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?><?xml-stylesheet type="text/xsl" href="testharness.xsl"?><testharness><message><timestamp>2021-03-18 10:06:49.019814</timestamp><level>error</level><value>Traceback (most recent call last):
+  File "C:\TCPython\TC_testharness\utility.py", line 96, in do_testharness
+    t()
+  File "TC_transtest_all_autoselect_EMV.py", line 2011, in processTransaction
+    result = processEMV(tid)
+  File "TC_transtest_all_autoselect_EMV.py", line 1597, in processEMV
+    [(0xDF, 0xDF, 0x0D), b'\x01']          # Don't force transaction online
+TypeError: list indices must be integers or slices, not tuple
+ </value></message></testharness>

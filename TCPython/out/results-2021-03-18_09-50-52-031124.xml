@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?><?xml-stylesheet type="text/xsl" href="testharness.xsl"?><testharness><message><timestamp>2021-03-18 09:53:03.840066</timestamp><level>error</level><value>Traceback (most recent call last):
+  File "C:\TCPython\TC_testharness\utility.py", line 96, in do_testharness
+    t()
+  File "TC_transtest_all_autoselect_EMV.py", line 2397, in processTransaction
+    conn.send([0xD2, 0x01, 0x01, 0x00])
+  File "C:\TCPython\TC_testharness\connection.py", line 363, in send_standard
+    self._send(value , tags, le_byte, log_packet, False)
+  File "C:\TCPython\TC_testharness\connection.py", line 326, in _send
+    log_out_frame_buf += self.send_raw( self.__nad, c_pcb, w_len, tosend ,lrc )
+  File "C:\TCPython\TC_testharness\connection.py", line 216, in send_raw
+    wr += self.__connection.write( data[wr:] )
+  File "C:\Users\jon.bianco\AppData\Local\Programs\Python\Python37-32\lib\site-packages\serial\serialwin32.py", line 289, in write
+    raise SerialException("WriteFile failed (%r)" % ctypes.WinError())
+serial.serialutil.SerialException: WriteFile failed (OSError(22, 'The specified procedure could not be found.', None, 127))
+ </value></message></testharness>

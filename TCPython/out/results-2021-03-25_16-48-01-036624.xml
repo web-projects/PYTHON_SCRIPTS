@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?><?xml-stylesheet type="text/xsl" href="testharness.xsl"?><testharness><message><timestamp>2021-03-25 16:48:59.488273</timestamp><level>error</level><value>Traceback (most recent call last):
+  File "C:\TCPython\TC_testharness\utility.py", line 96, in do_testharness
+    t()
+  File "TC_transtest_all_autoselect_EMV.py", line 2024, in processTransaction
+    result = processEMV(tid)
+  File "TC_transtest_all_autoselect_EMV.py", line 1726, in processEMV
+    if buf[0][2] == 0xC3:
+IndexError: tuple index out of range
+ </value></message></testharness>

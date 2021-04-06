@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?><?xml-stylesheet type="text/xsl" href="testharness.xsl"?><testharness><message><timestamp>2021-04-02 15:42:08.749208</timestamp><level>error</level><value>Traceback (most recent call last):
+  File "C:\TCPython\TC_testharness\utility.py", line 96, in do_testharness
+    t()
+  File "TC_transtest_all_autoselect_EMV.py", line 2149, in processTransaction
+    TC_TCLink.setCVMLimitStates(tlv.getTag((0x84))[0], tlv.getTag((0x9F, 0x34))[0])
+  File "C:\TCPython\TC_TCLink.py", line 754, in setCVMLimitStates
+    aid_mc_value = aid_mc.hex().upper()
+AttributeError: 'list' object has no attribute 'hex'
+ </value></message></testharness>

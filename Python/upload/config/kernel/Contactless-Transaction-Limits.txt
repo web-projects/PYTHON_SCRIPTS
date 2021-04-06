@@ -1,0 +1,6 @@
+CONTACTLESS CVM REQUIRED STARTING AT AMOUNT:
+
+AMEX - $15.00
+DISC - $20.00
+M/C  - $20.01
+VISA - UNLIMITED <== This probably needs to change

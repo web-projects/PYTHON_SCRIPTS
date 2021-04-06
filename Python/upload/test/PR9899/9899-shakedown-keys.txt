@@ -1,0 +1,48 @@
+===================================================================================================
+Test ability to verify configuration file works with test key in new slot and that, after
+key update for slot 0, encryption can be successfully controlled only by loading appropriately
+signed configuration files.
+===================================================================================================
+
+ANSI Test Key for ADE slot 8 and Non-Validated Production key for ADE slot 0
+For UX-301 with Serial Number: 986-227-188
+
+BDK: 0123456789ABCDEFFEDCBA9876543210
+   
+FILES LOCATION: C:\Python\upload\test\PR9899
+
+1) ANSI Test Key for loading in ADE slot 8
+   ADK key ADEa8: RADEa8_986-227-188.tgz (from bundle BMX_1-20-0003-1215.tgz).
+   ###
+   putfile --serial COM12 --file C:\Python\upload\test\PR9899\RADEa8_986-227-188.tgz
+   reboot device
+   ensure key is in slot 8: Supervisor > Security > Key status > ADE
+   ADE#8: KSN: FFFF9876543211C00007
+   transtest_all_autoselect.py --serial COM9
+   expected result: FAIL
+
+2) Configuration to use SRED slot 8 for card encryption signing
+   dl.bundle.Sphere_ConfigSlot8.tar
+   ###
+   putfile --serial COM12 --file C:\Python\upload\test\PR9899\dl.bundle.Sphere_ConfigSlot8.tar
+   reboot device
+   transtest_all_autoselect.py --serial COM9
+   expected result: PASS
+
+4) ###
+   transtest_all_autoselect.py --serial COM9
+
+5) Non-validated production key for loading in ADE slot 0
+   VSS key RTCMv2_986-227-188.tgz (from bundle BMX_1-20-0003-1216.tgz).
+   ###
+   putfile --serial COM9 --file C:\Python\upload\test\PR9899\RTCMv2_986-227-188.tgz
+   ADE#0: KSN: FFFF987654012AC00577
+
+6) Configuration to use ADE slot 0 for card encryption signing
+   dl.bundle.Sphere_Config2.tar
+   ###
+   putfile --serial COM9 --file C:\Python\upload\dl.bundle.Sphere_Config2.tar
+   reboot device
+   transtest_all_autoselect.py --serial COM9
+   expected result: PASS
+   

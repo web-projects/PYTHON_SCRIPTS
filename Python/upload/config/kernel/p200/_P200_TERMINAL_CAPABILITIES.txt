@@ -1,0 +1,53 @@
+Attended using the Engage P200 (EMV L2 Version 7.0.3r)
+Terminal 22 – Config 1C - CHECKSUM=96369E1F
+
+9F33=E0F8C8
+9F35=22
+9F40=F000F0A001
+KernelConfigChecksumParams=FFBF01
+
+CARD DATA INPUT CAPABILITY
+Terminal Type           : 22
+Manual Entry            : Yes
+Magnetic Stripe         : Yes
+IC with Contacts        : Yes
+
+CVM CAPABILITY
+Plaintext PIN           : Yes
+Online Enciphered PIN   : Yes
+Signature               : Yes
+Offline Enciphered PIN  : Yes
+No CVM                  : Yes
+
+SECURITY CAPABILITY
+SDA & DDA               : Yes
+Card Capture            : No
+CDA                     : Mode 1
+
+TRANSACTION TYPE CAPABILITY
+Tran Type - Cash        : Yes
+Tran Type - Goods       : Yes
+Tran Type - Services    : Yes
+Tran Type - Cash Back   : Yes
+Tran Type - Inquiry     : No
+Tran Type - Transfer    : No
+Tran Type - Admin       : No
+Tran Type - Cash Deposit: No
+
+TERMINAL DATA INPUT CAPABILITY
+ALL KEYS --------------------
+
+TERMINAL DATA OUTPUT CAPABILITY
+Print, Attendant        : Yes
+Print, Cardholder       : No
+Display, Attendant      : Yes
+Display, Cardholder     : No
+
+COMPLETION PROCESSING
+Forced Online           : Yes
+Forced Acceptance       : Yes
+Advices                 : Yes
+Voice Referrals         : Yes
+Batch Data Capture      : Yes
+Online Data Capture     : Yes
+Default TDOL            : Yes

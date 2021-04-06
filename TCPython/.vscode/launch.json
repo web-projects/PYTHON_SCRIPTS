@@ -1,0 +1,47 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: TC_transtest_all_autoselect_EMV",
+            "type": "python",
+            "request": "launch",
+            //"program": "${file}",
+            "program": "TC_transtest_all_autoselect_EMV.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--serial", "COM11",
+                "--amount", "1285",
+                "--amtother", "0000",
+                "--validateAmount", "n",
+                "--transaction_menu", "n",
+
+                //pn97
+                //,"--custid", "1117600"
+                //,"--password", "ipa1234"
+
+		        //pn92
+                //,"--custid",   "1152702"
+                //,"--password", "testipa1"
+                //,"--custid",   "1158101"
+                //,"--password", "test1234"
+
+                // fiserv ATTENDED
+                "--custid", "1111525",
+                "--password", "test1234",
+
+                // fiserv UNATTENDED
+                //"--custid",   "1111503",
+                //"--password", "test1234",
+
+                // Transaction Types
+                "--action", "sale",
+                //,"--online", "y"
+                "--pinattempts", "2",
+                "--partialauth", "y",
+
+                // additional tags for ICC CERT: UNATTENDED (UX301) ONLY
+                "--device_pinpad_capable", "y"
+            ]
+        }
+    ]
+}

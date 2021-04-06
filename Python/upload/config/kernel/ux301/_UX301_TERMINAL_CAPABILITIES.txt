@@ -1,0 +1,48 @@
+Unattended using the Ux 301/401/100 (EMV L2 Version 7.0.3l)
+Terminal 25 – Config 8C - CHECKSUM=D196BA9D                                                                      
+
+CARD DATA INPUT CAPABILITY
+Terminal Type           : 25
+Manual Entry            : No
+Magnetic Stripe         : Yes
+IC with Contacts        : Yes
+
+CVM CAPABILITY
+Plaintext PIN           : Yes
+Online Enciphered PIN   : Yes
+Signature               : No
+Offline Enciphered PIN  : Yes
+No CVM                  : Yes
+
+SECURITY CAPABILITY
+SDA & DDA               : Yes
+Card Capture            : No
+CDA                     : Mode 1
+
+TRANSACTION TYPE CAPABILITY
+Tran Type - Cash        : No
+Tran Type - Goods       : Yes
+Tran Type - Services    : Yes
+Tran Type - Cash Back   : No
+Tran Type - Inquiry     : No
+Tran Type - Transfer    : No
+Tran Type - Admin       : No
+Tran Type - Cash Deposit: No
+
+TERMINAL DATA INPUT CAPABILITY
+ALL KEYS --------------------
+
+TERMINAL DATA OUTPUT CAPABILITY
+Print, Attendant        : No
+Print, Cardholder       : Yes
+Display, Attendant      : No
+Display, Cardholder     : Yes
+
+COMPLETION PROCESSING
+Forced Online           : No
+Forced Acceptance       : No
+Advices                 : No
+Voice Referrals         : No
+Batch Data Capture      : Yes
+Online Data Capture     : Yes
+Default TDOL            : Yes

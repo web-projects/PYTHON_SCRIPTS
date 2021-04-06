@@ -1,0 +1,44 @@
+DISCOVER TAG 9F33 - Terminal Capabilities
+
+Byte 1
+
+bit 8: 1 = Manual Key Entry 
+bit 7: 1 = Magnetic Stripe 
+bit 6: 1 = IC with contacts 
+bit 5: 1 = RFU 
+bit 4: 1 = RFU 
+bit 3: 1 = RFU 
+bit 2: 1 = RFU 
+bit 1: 1 = RFU
+
+Byte 2
+
+bit 8: 1 = Plaintext PIN for ICC verification 
+bit 7: 1 = Enciphered PIN for online verification 
+bit 6: 1 = Signature (paper) 
+bit 5: 1 = Enciphered PIN for offline verification 
+bit 4: 1 = No CVM Required 
+bit 3: = RFU 
+bit 2: = RFU 
+bit 1: = RFU
+
+Byte 3
+
+bit 8: 1 = SDA 
+bit 7: 1 = DDA 
+bit 6: 1 = Card capture 
+bit 5: 1 = RFU 
+bit 4: 1 = CDA 
+bit 3: = RFU
+bit 2: = RFU 
+bit 1: = RFU
+
+PRESENT : E0 E8 08
+// Byte1: E0 = Manual Key Entry+MSR+ICC
+// Byte2: E8 = PlaintextPIN+OnlineEncipheredPIN+Signature+NOCVM
+// Byte3: 08 = SDA
+
+PROPOSED: 60 D8 D8
+// Byte1: 60 = MSR+ICC
+// Byte2: D8 = PlaintextPIN+OnlineEncipheredPIN+OfflineEncipheredPIN+NOCVM
+// Byte3: D8 = SDA+CDA+DDA

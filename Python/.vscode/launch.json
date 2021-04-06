@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: TC_Signature",
+            "type": "python",
+            "request": "launch",
+            //"program": "${file}",
+            "program" : "TC_Parser.py",
+            "console": "integratedTerminal",
+            "args" :
+                    [
+                        "--serial", "COM11"
+                        //,"--data", ""
+                        //,"--ksn", ""
+                    ]
+        }
+    ]
+}

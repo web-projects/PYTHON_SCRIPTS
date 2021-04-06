@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?><?xml-stylesheet type="text/xsl" href="testharness.xsl"?><testharness><message><timestamp>2021-03-25 17:10:27.219601</timestamp><level>error</level><value>Traceback (most recent call last):
+  File "C:\TCPython\TC_testharness\utility.py", line 96, in do_testharness
+    t()
+  File "TC_transtest_all_autoselect_EMV.py", line 2028, in processTransaction
+    result = processEMV(tid)
+  File "TC_transtest_all_autoselect_EMV.py", line 1840, in processEMV
+    tlv = sendSecondGenAC(continue_tpl)
+  File "TC_transtest_all_autoselect_EMV.py", line 1315, in sendSecondGenAC
+    status, buf, uns = getEMVAnswer(True)
+  File "TC_transtest_all_autoselect_EMV.py", line 495, in getEMVAnswer
+    return getAnswer(ignoreUnsolicited, False)
+  File "TC_transtest_all_autoselect_EMV.py", line 473, in getAnswer
+    status, buf, uns = conn.receive()
+  File "C:\TCPython\TC_testharness\connection.py", line 448, in receive_standard
+    return self.__receive(True, timeout, log_packet )
+  File "C:\TCPython\TC_testharness\connection.py", line 434, in __receive
+    tags = tlvp.parse_received_data( data_frame )
+  File "C:\TCPython\TC_testharness\tlvparser.py", line 246, in parse_received_data
+    result = self.__parse_received_primitive(data_frame)
+  File "C:\TCPython\TC_testharness\tlvparser.py", line 229, in __parse_received_primitive
+    tlv_len, tlv_len_b = self.__decode_tlv_length(data_frame[tag_len:])
+  File "C:\TCPython\TC_testharness\tlvparser.py", line 144, in __decode_tlv_length
+    if buf[0] &amp; 0x80 == 0:
+IndexError: bytearray index out of range
+ </value></message></testharness>

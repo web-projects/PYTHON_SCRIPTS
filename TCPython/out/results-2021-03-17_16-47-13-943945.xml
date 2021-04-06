@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?><?xml-stylesheet type="text/xsl" href="testharness.xsl"?><testharness><message><timestamp>2021-03-17 16:52:52.011474</timestamp><level>error</level><value>Traceback (most recent call last):
+  File "C:\TCPython\TC_testharness\utility.py", line 96, in do_testharness
+    t()
+  File "TC_transtest_all_autoselect_EMV.py", line 2351, in processTransaction
+    if nextstep == -1:
+UnboundLocalError: local variable 'nextstep' referenced before assignment
+ </value></message></testharness>

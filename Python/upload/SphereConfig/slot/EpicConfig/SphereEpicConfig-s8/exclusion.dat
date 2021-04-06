@@ -1,0 +1,22 @@
+/******************
+ * exclusion
+ ******************/
+ 
++*.out
++*.p7s
++*.lib
++*.ttf
++*.vsa
++*.vsl
++*.so
++secure.dat
++exclusion.dat
++redir.ini
++#whitelist.dat
++mapp_prot.cfg
++config.$$$
+-*.zip.p7s
+-*.rkl.p7s
+-upgrade.ini.p7s
++wifi_profile.oarch
++bt_pair_list.oarch

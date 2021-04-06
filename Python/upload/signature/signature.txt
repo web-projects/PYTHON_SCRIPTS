@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <center><?var title_text?></center>
+    <!-- 
+    <hr>
+    <input type="signature" output="raw" name="signatureTwo" style "width:100%;height:50%;background-color:transparent" trigger="1" action="call ok.enable()">
+    <hr>
+    <center><?var title_text?></center>
+    <hr>
+    <button name="ok" action="return 0" disabled>OK</button>
+    -->
+  </body>
+</html>

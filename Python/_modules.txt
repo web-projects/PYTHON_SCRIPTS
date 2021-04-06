@@ -1,0 +1,36 @@
+Package           Version  
+----------------- ---------
+asn1crypto        1.2.0    
+azure-devops      5.1.0b3  
+certifi           2019.6.16
+cffi              1.13.0   
+chardet           3.0.4    
+colorama          0.3.2    
+cryptography      2.7      
+httplib2          0.9      
+idna              2.8      
+isodate           0.6.0    
+msrest            0.6.9    
+oauthlib          3.1.0    
+pip               20.0.2   
+pycparser         2.19     
+pyDes             2.0.1    
+PyOpenGL          3.1.0    
+pyparsing         2.4.2    
+PyQt5             5.13.0   
+PyQt5-sip         4.19.18  
+pyserial          2.7      
+pywin32           227      
+requests          2.22.0   
+requests-oauthlib 1.2.0    
+setuptools        40.8.0   
+six               1.12.0   
+Testharness       2.0.0    
+urllib3           1.25.3   
+
+pip list
+
+NOTE: pyserial==3.4 is the only version that worked for Hema.
+pip install pyserial==2.7
+
+pip install pywin32==227

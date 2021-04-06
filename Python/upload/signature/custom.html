@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <center><?var title_text?></center> 
+    <?foreach text|(center)|[value](br)|(/center)|?>
+    <input type="<?var TEMPLATE_INPUT_TYPE ?>"
+    name='input_data' accesskey='&#13;'
+    maxlength="<?var max_length ?>"
+    allowed_chars="<?var allowed_chars ?>"
+    precision="<?var input_precision ?>"
+    autosize nocaret action="return 0"/>
+    <?ifneq entry_mode_visibility hidden (/center)(?var entry_mode?)(/center) ?>
+  </body>
+</html>

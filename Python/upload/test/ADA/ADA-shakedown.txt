@@ -1,0 +1,18 @@
+===================================================================================================
+ADA SHAKEDOWN PROCEDURE.
+===================================================================================================
+   
+FILES LOCATION: C:\Python\upload\test\ADA
+
+1) ADATest.py - also a testing copy in C:\Python
+2) SphereConfig20200324.zip
+3) KEY
+   putfile.py --serial COM9 --file ./upload/keys/ADE/RTCOMv_986-227-188.tgz
+4) dl.bundle.Sphere_config20200324.tar
+   putfile.py --serial COM9 --file C:\Python\upload\test\ADA\dl.bundle.Sphere_config20200401s0.tar
+   
+Expected results:
+Device reports all keys when script is run. Exit test by pressing 'STOP' button.
+
+04/01/2020 TEST - RESULTS: numeric keys are not reported.
+           opened JIRA ticket VS-27438
