@@ -40,6 +40,9 @@ TRANSACTION_TYPE = b'\x00' # SALE TRANSACTION
 ISBALANCEINQUIRY = TRANSACTION_TYPE == b'\x30'
 AMOUNTFORINQUIRY = b'\x00\x00\x00\x00\x00\x00'
 
+# VAS REPORTING: VIPA 6.8.2.17+
+ENABLE_VAS_REPORTING = False
+
 # EMV DISABLEMENT
 EMV_ENABLED = 'y'
 
@@ -108,7 +111,7 @@ VISA_CDET23_TC06   = b'\x00\x00\x00\x00\x06\x06'   # VISA CDET 2.3 TEST CASE 06
 VISA_CDET23_TC09   = b'\x00\x00\x00\x00\x09\x00'   # VISA CDET 2.3  TEST CASE 09
 
 ## TRANSACTION AMOUNT
-SMALL_AMOUNT = b'\x00\x00\x00\x00\x12\x82'
+SMALL_AMOUNT = b'\x00\x00\x00\x00\x32\x50'
 LARGE_AMOUNT = b'\x00\x00\x09\x99\x99\x99' 
 
 ### --- CHANGE AMOUNT VALUE HERE ---v
@@ -138,6 +141,7 @@ keyset_id_ipp = 0x01
 ISIPPKEY = True    
 HOST_ID = host_id_ipp if ISIPPKEY else host_id_vss
 KEYSET_ID = keyset_id_ipp if ISIPPKEY else keyset_id_vss
+IPP_PIN_IS_ASCII = True
 
 PINLEN_MIN = 4
 PINLEN_MAX = 6
@@ -335,7 +339,6 @@ def performCleanup():
     conn.send([0xD2, 0x01, 0x01, 0x01])
     log.log('*** RESET DISPLAY ***')
     status, buf, uns = getAnswer(True, False)
-    # Disconnect
 
 def getCVMResult(tlv):
     cvm_result = tlv.getTag((0x9F,0x34))[0]
@@ -416,13 +419,15 @@ def MagstripeCardState(tlv):
 # PIN Workflow
 # ---------------------------------------------------------------------------- #
 
-def OnlinePinTransaction(tlv, tid, cardState, continue_tpl):
+def OnlinePinTransaction(tlv, tid, cardState, continue_tpl, bypassSecongGen=False):
     global TRANSACTION_TYPE, AMOUNT, PINLEN_MIN, PINLEN_MAX, PIN_ATTEMPTS
+    global HOST_ID, KEYSET_ID
+ 
+    # AXP QC 032 REQUIRES 2nd GENERATE AC to report TAGS 8A and 9F27
+    if cardState == EMV_CARD_INSERTED and bypassSecongGen == False:    
+      sendSecondGenAC(continue_tpl, tid)
 
-    # AXP QC 032 REQUIRES 2nd GENERATE AC to report TAGS 8A and 9F27 
-    sendSecondGenAC(continue_tpl, tid)
-
-    log.log('Online PIN mode')
+    log.log('Online PIN TRANSACTION ------------------------------------------')
 
     # If SRED is enabled and pan_cache_timeout is specified in the [vipa] section of MAPP_VSD_SRED.CFG, the last cached PAN will be used for
     # PIN Block Formats that require PAN in case the PAN tag is not supplied.
@@ -441,17 +446,17 @@ def OnlinePinTransaction(tlv, tid, cardState, continue_tpl):
         #,[(0x5A), PANDATA]                     # PAN DATA
         # 20201119: JIRA TICKET VS-52542 as this option does not work
         # AXP QC 037 - ALLOW PIN BYPASS WITH <GREEN> BUTTON
-        ,[(0xDF, 0xEC, 0x7D), b'\x01']          # PIN entry type: pressing ENTER on PIN Entry screen (without any PIN digits) will return SW1SW2=9000 response with no data
+        ,[(0xDF, 0xEC, 0x7D), b'\x01'],         # PIN entry type: pressing ENTER on PIN Entry screen (without any PIN digits) will return SW1SW2=9000 response with no data
+        [(0xDF, 0xED, 0x08), b'\x00']           # PIN Block Format ISO
     ]
     onlinepin_tpl = (0xE0, onlinepin_tag)
 
     response = "declined"
     attempts = 0
-    host_id = 0x02;	# Alter from default of 2 to VSS Script index 2 (host_id=3)
 
     while response != "approved" and attempts < PIN_ATTEMPTS:
         # ONLINE PIN [DE, D6]
-        conn.send([0xDE, 0xD6, host_id, 0x00], onlinepin_tpl)
+        conn.send([0xDE, 0xD6, HOST_ID, KEYSET_ID], onlinepin_tpl)
         status, buf, uns = getEMVAnswer() 
         if status != 0x9000:
             break
@@ -464,8 +469,16 @@ def OnlinePinTransaction(tlv, tid, cardState, continue_tpl):
             if len(encryptedPIN):
                 ksn = pin_tlv.getTag((0xDF, 0xED, 0x03), TLVParser.CONVERT_HEX_STR)[0].upper()
                 if len(ksn):
+                    if HOST_ID == 0x05:
+                      if IPP_PIN_IS_ASCII:
+                        encryptedPIN = bytes.fromhex(encryptedPIN).decode('utf-8')
+                        ksnStr = bytes.fromhex(ksn).decode('utf-8')
+                      else:
+                        ksnStr = ksn
+                      ksn = "{:F>20}".format(ksnStr)
+                
                     # this script doesn't process online
-                    print("Encrypted PIN/KSN", encryptedPIN, ksn)
+                    print("ONLINE PIN - Encrypted PIN/KSN", encryptedPIN, ksn)
                     break
                     displayMsg('Processing ...')
                     TC_TCLink.saveEMVData(tlv,0xE4)
@@ -550,19 +563,26 @@ def OnlinePinInTemplateE6(tlv, cardState, continue_tpl):
     response = 'Declined'
     
     # obtain PIN Block: KSN and Encrypted data
-    encryptedPIN = pin_tlv.getTag((0xDF,0xED,0x6C))
-    if len(encryptedPIN):
-      encryptedPIN = pin_tlv.getTag((0xDF,0xED,0x6C))[0].hex().upper()
-      if len(encryptedPIN):
+    encryptedPINData = pin_tlv.getTag((0xDF,0xED,0x6C))
+    if len(encryptedPINData):
+      encryptedPINData = pin_tlv.getTag((0xDF,0xED,0x6C))[0].hex().upper()
+      if len(encryptedPINData):
           ksn = pin_tlv.getTag((0xDF, 0xED, 0x03), TLVParser.CONVERT_HEX_STR)[0].upper()
           if len(ksn):
             # adjust KSN for IPP
             if HOST_ID == 0x05:
-                OnlineEncryptedPIN = bytes.fromhex(encryptedPIN).decode('utf-8')
-                ksnStr = bytes.fromhex(ksn).decode('utf-8')
+                if IPP_PIN_IS_ASCII:
+                  encryptedPINData = bytes.fromhex(encryptedPINData).decode('utf-8')
+                  ksnStr = bytes.fromhex(ksn).decode('utf-8')
+                else:
+                  ksnStr = ksn
                 ksn = "{:F>20}".format(ksnStr)
+            
+            # store globals
+            OnlineEncryptedPIN = encryptedPINData
             OnlinePinKSN = ksn
-            log.logwarning("Encrypted PIN/KSN", OnlineEncryptedPIN, OnlinePinKSN)
+            
+            log.logwarning("E6 Template - Encrypted PIN/KSN", OnlineEncryptedPIN, OnlinePinKSN)
             log.logwarning("HOST_ID =", HOST_ID, "<==> KEYSET_ID =", KEYSET_ID)
             #displayMsg('Processing ...')
             #response = 'Approved'
@@ -686,7 +706,8 @@ def processMagstripeFallback(tid):
     
     # Ask for swipe
     if MagstripeCardState(tlv) == EMV_CARD_REMOVED:
-        conn.send([0xD2, 0x01, 0x00, 0x01], '\x09Please Swipe Card')
+        #conn.send([0xD2, 0x01, 0x00, 0x01], '\x09Please Swipe Card')
+        conn.send([0xD2, 0x01, 0x2B, 0x01])
         status, buf, uns = getAnswer()
         # Wait for swipe
         while True:
@@ -705,6 +726,22 @@ def processMagstripeFallback(tid):
         
     # We're done!
     return 5
+
+def setFirstGenContinueTransaction():
+
+    continue_tran_tag = [
+        [(0x9F, 0x02), AMOUNT],         # Amount
+        [(0x9F, 0x03), AMTOTHER],       # Amount, other
+        CURRENCY_CODE,
+        COUNTRY_CODE,
+        ACQUIRER_ID,                    # TAG C2 acquirer id: ref. iccdata.dat
+        [(0xDF, 0xA2, 0x18), [0x00]],   # Pin entry style
+        AUTHRESPONSECODE,               # TAG 8A
+        CONTINUE_REQUEST_AAC if (ISOFFLINE or ISBALANCEINQUIRY) else CONTINUE_REQUEST_TC,  # TAG C0 object decision: AAC=00, TC=01
+        QUICKCHIP_ENABLED,
+    ]
+
+    return (0xE0, continue_tran_tag)
 
 def sendFirstGenAC(tlv, tid):
     global APPLICATION_LABEL, EMV_VERIFICATION
@@ -968,10 +1005,12 @@ def processEMV(tid):
                     # request PIN from user
                     return OnlinePinTransaction(tlv, tid, EMV_CARD_INSERTED, continue_tpl)
                 
+                # check for OFFLINE PIN ENTRY: KSN/ENCRYPTED DATA PAIR not to be extracted since PIN is OFFLINE verified
+                if "ENCRYPTED" in cvm_value or "PLAIN PIN" in cvm_value:
+                    hasPINEntry = False
+                    
             if tlv.tagCount(0xE5):
                 log.log("Transaction declined offline")
-                if hasPINEntry == True:
-                  OnlinePinInTemplateE6(tlv, EMV_CARD_INSERTED, continue_tpl)
                 return 2
                 
             break
@@ -988,10 +1027,23 @@ def processEMV(tid):
         return 1
         
     if tlv.tagCount(0xE5):
-        log.log("Transaction declined offline")
+        log.logerr('TRANSACTION DECLINED OFFLINE')
+
+        # Check for Contact EMV Capture
+        # print(">>> EMV Data 3 ff7f", tlv.tagCount((0xFF,0x7F)))
+
         if hasPINEntry == True:
-          OnlinePinInTemplateE6(tlv, EMV_CARD_INSERTED, continue_tpl)
-        return 2
+            # expect Template E6 already collected PIN: retrieve PIN KSN/ENCRYPTED DATA
+            if len(OnlineEncryptedPIN) == 0 or len(OnlinePinKSN) == 0:
+                # save EMV Tags
+                #TC_TCLink.saveEMVData(tlv, 0xE5)
+                OnlinePinInTemplateE6()
+            # save continue tpl in case of PIN retry
+            OnlinePinContinueTPL = continue_tpl
+
+        #TC_TCLink.saveCardData(tlv)
+
+        return 6 if hasPINEntry else 2
         
     return 3
 
@@ -1107,6 +1159,9 @@ def initContactless():
 # Start Contactless Transaction
 def startContactless(preferredAID=''):
     global AMOUNT, AMTOTHER, DATE, TIME
+    
+    vas = "{\"Preload_Configuration\":{\"Configuration_version\":\"1.0\",\"Terminal\":{\"Terminal_Capabilities\":{\"Capabilities\":\"Payment|VAS\"},\"PollTech\":\"AB\",\"PollTime\":15000,\"Source_List\":[{\"Source\":\"ApplePay\"},{\"Source\":\"AndroidPay\"}]}}}"
+
     # Start Contactless transaction
     start_ctls_tag = [
         [(0x9F, 0x02), AMOUNT],       # amount
@@ -1129,7 +1184,11 @@ def startContactless(preferredAID=''):
     #else:
     #    # Application Identifier Terminal (AID)
     #    start_ctls_tag.append([(0x9F, 0x06), b'\x00\x01'])
-        
+    
+    # VAS Transactions VIPA 6.8.2.17+
+    if ENABLE_VAS_REPORTING:
+      start_ctls_tag.append([(0xDF, 0xB5, 0x01), vas.encode()])
+    
     start_ctls_templ = (0xE0, start_ctls_tag)
 
     # START CONTACTLESS TRANSACTION [C0, A0]
@@ -1351,6 +1410,7 @@ def processTransaction():
                     vspDecrypt(tlv, tid)
                     tranType = 4
                     break
+                    
                 if tlv.tagCount(0xE4):
                 
                     # Terminal Capabilites
@@ -1362,6 +1422,9 @@ def processTransaction():
                     # decrypt transaction                
                     vspDecrypt(tlv, tid)
                     
+                    if cvm_value == 'ONLINE PIN':
+                      return OnlinePinTransaction(tlv, tid, cardState, setFirstGenContinueTransaction()) 
+ 
                     if EMV_ENABLED == 'y':
                       processCtlsContinue()
                     else:
@@ -1381,6 +1444,7 @@ def processTransaction():
                       
                     tranType = 5
                     break
+                    
                 if tlv.tagCount(0xE7):
                     vspDecrypt(tlv, tid)
                     displayEncryptedTrack(tlv)

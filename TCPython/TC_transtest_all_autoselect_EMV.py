@@ -210,7 +210,10 @@ import re
 #
 # 1. All Contact: TAG 95 (TVR) Byte 1, Bit 5 (card appears in exception file) should not be set
 # 2. MasterCard dynamic setup for TAG 9F33 for transaction CVM limits validation. 
-VERSION_LBL = '1.0.0.35'
+#VERSION_LBL = '1.0.0.35'
+#
+# 1. VISA US COMMON DEBIT SALE+CASHBACK - 1) transaction type included in request, 2) contlemv.cfg - AllowCashback=1
+VERSION_LBL = '1.0.0.36'
 #
 # ----------------------------------------------------------------------------------------------------------
 
@@ -333,6 +336,7 @@ keyset_id_ipp = 0x01
 IS_IPP_KEY = True
 HOST_ID = host_id_ipp if IS_IPP_KEY else host_id_vss
 KEYSET_ID = keyset_id_ipp if IS_IPP_KEY else keyset_id_vss
+IPP_PIN_IS_ASCII = True
 
 # ONLINE PIN LENGTHS
 PINLEN_MIN = 0x04
@@ -373,6 +377,11 @@ FALLBACK_TYPE = 'technical'
 LIST_STYLE_SCROLL = 0x00
 LIST_STYLE_NUMERIC = 0x01
 LIST_STYLE_SCROLL_CIRCULAR = 0x02
+
+# ---------------------------------------------------------------------------- #
+# VAS TRANSACTIONS - REQUIRE VIPA 6.8.2.17 or greater
+EnableVASTransactions = False
+CLS_TRANSACTIONS = 0x21 if EnableVASTransactions else 0x01
 
 
 # ---------------------------------------------------------------------------- #
@@ -491,7 +500,7 @@ def getAnswer(ignoreUnsolicited=True, stopOnErrors=True):
             traceback.print_stack()
             if stopOnErrors:
                 performCleanup()
-                exit(-1)
+                exit(0)
         break
     return status, buf, uns
 
@@ -951,7 +960,7 @@ def getPINEntry(tlv):
     OnlineEncryptedPIN = pin_tlv.getTag((0xDF, 0xED, 0x6C))[0].hex().upper()
     OnlinePinKSN = pin_tlv.getTag((0xDF, 0xED, 0x03), TLVParser.CONVERT_HEX_STR)[0].upper()
     # adjust KSN for IPP
-    if HOST_ID == 0x05:
+    if HOST_ID == 0x05 and IPP_PIN_IS_ASCII:
         OnlineEncryptedPIN = bytes.fromhex(OnlineEncryptedPIN).decode('utf-8')
         ksnStr = bytes.fromhex(OnlinePinKSN).decode('utf-8')
         OnlinePinKSN = "{:F>20}".format(ksnStr)
@@ -1015,7 +1024,8 @@ def OnlinePinTransaction(tlv, cardState, continue_tpl, setattempts=0, bypassSeco
                 ksn = pin_tlv.getTag((0xDF, 0xED, 0x03), TLVParser.CONVERT_HEX_STR)[0].upper()
                 if len(ksn):
                     # adjust KSN for IPP
-                    if HOST_ID == 0x05:
+                    # note: this is not required if scapp.cfg IPP_DATA_FORMAT=1
+                    if HOST_ID == 0x05 and IPP_PIN_IS_ASCII:
                         encryptedPIN = bytes.fromhex(encryptedPIN).decode('utf-8')
                         ksnStr = bytes.fromhex(ksn).decode('utf-8')
                         ksn = "{:F>20}".format(ksnStr)
@@ -1144,7 +1154,7 @@ def OnlinePinInTemplateE6():
             ksn = pin_tlv.getTag((0xDF, 0xED, 0x03), TLVParser.CONVERT_HEX_STR)[0].upper()
             if len(ksn):
                 # adjust KSN for IPP
-                if HOST_ID == 0x05:
+                if HOST_ID == 0x05 and IPP_PIN_IS_ASCII:
                     OnlineEncryptedPIN = bytes.fromhex(encryptedPIN).decode('utf-8')
                     ksnStr = bytes.fromhex(ksn).decode('utf-8')
                     ksn = "{:F>20}".format(ksnStr)
@@ -1373,18 +1383,17 @@ def initContactless():
 # Start Contactless Transaction
 def startContactless(preferredAID=''):
     global AMOUNT, AMTOTHER, DATE, TIME
+    
     # Start Contactless transaction
     start_ctls_tag = [
+        [(0x9C), TRANSACTION_TYPE], # transaction type: for Sale+Cashback, ensure AID sets CashbackAllowed = 1
         [(0x9F, 0x02), AMOUNT],     # amount
         [(0x9F, 0x03), AMTOTHER],   # cashback
         [(0x9A), DATE],             # system date
         [(0x9F, 0x21), TIME],       # system time
         CURRENCY_CODE,              # currency code
-        COUNTRY_CODE,               # country code
+        COUNTRY_CODE                # country code
     ]
-    # Sale / Purchase with cashback not allowed here
-    if TRANSACTION_TYPE != b'\x09':
-        start_ctls_tag.append([(0x9C), TRANSACTION_TYPE])
 
     # to process ARQ in First Generate AC
     if ISBALANCEINQUIRY:
@@ -1397,8 +1406,14 @@ def startContactless(preferredAID=''):
         # Application Identifier Terminal (AID)
         start_ctls_tag.append([(0x9F, 0x06), b'\x00\x01'])
 
+    if EnableVASTransactions:
+        vas = "{\"Preload_Configuration\":{\"Configuration_version\":\"1.0\",\"Terminal\":{\"Terminal_Capabilities\":{\"Capabilities\":\"Payment|VAS\"},\"PollTech\":\"AB\",\"PollTime\":15000,\"Source_List\":[{\"Source\":\"ApplePay\"},{\"Source\":\"AndroidPay\"}]}}}"
+        start_ctls_tag.append([(0xDF, 0xB5, 0x01), vas.encode()])
+
     start_ctls_templ = (0xE0, start_ctls_tag)
 
+    #NOTE: VIPA 6.8.2.17 is REQUIRED FOR VAS TRANSACTIONS
+    
     # START CONTACTLESS TRANSACTION [C0, A0]
     # P1
     #     Bit 0 (0x01)
@@ -1417,7 +1432,7 @@ def startContactless(preferredAID=''):
     #     * this feature is used primarily for SCA
     #     Bit 7 (0x80)
     #     stop on MIFARE command processing errors (only valid when bit 1 is set)
-    conn.send([0xC0, 0xA0, 0x01, 0x00], start_ctls_templ)
+    conn.send([0xC0, 0xA0, CLS_TRANSACTIONS, 0x00], start_ctls_templ)
 
     log.log('Starting Contactless transaction')
 
@@ -1820,6 +1835,12 @@ def processEMV(tid):
                     log.log("Transaction is blind refund")
                     TC_TCLink.saveCardData(tlv)
                     TC_TCLink.saveEMVData(tlv, 0xE3, True)
+                    # dynamic validation for MasterCard above floor limit and CVM
+                    if tlv.tagCount((0x84)):
+                        if  tlv.tagCount((0x95)):
+                            TC_TCLink.setTVRStates(tlv.getTag((0x84))[0], tlv.getTag((0x95))[0])
+                        if tlv.tagCount((0x9F, 0x34)):
+                            TC_TCLink.setCVMLimitStates(tlv.getTag((0x84))[0], tlv.getTag((0x9F, 0x34))[0])
                     return 8
                 else:
                     log.log("Transaction approved offline")
@@ -2124,9 +2145,14 @@ def processTransaction(args):
                     if args.action == 'credit':
                         tranType = 7
                         # dynamic validation for MasterCard CVM limit
-                        if tlv.tagCount((0x84)) > 0 and tlv.tagCount((0x9F, 0x33)):
-                            TC_TCLink.setCVMLimitStates(tlv.getTag((0x84))[0], tlv.getTag((0x9F, 0x33))[0])                        
+                        if tlv.tagCount((0x84)) > 0 and tlv.tagCount((0x9F, 0x34)):
+                            TC_TCLink.setCVMLimitStates(tlv.getTag((0x84))[0], tlv.getTag((0x9F, 0x34))[0])                        
                     else:
+                        if args.action == 'credit2':
+                            # dynamic validation for MasterCard CVM limit
+                            if tlv.tagCount((0x84)) > 0 and tlv.tagCount((0x9F, 0x34)):
+                                TC_TCLink.setCVMLimitStates(tlv.getTag((0x84))[0], tlv.getTag((0x9F, 0x34))[0])                        
+                                
                         # todo: vsp decrypt!
                         TC_TransactionHelper.vspDecrypt(tlv, tid, log)
                         TC_TransactionHelper.displayEncryptedTrack(tlv, log)
@@ -2148,6 +2174,10 @@ def processTransaction(args):
                         if tlv.tagCount((0x9F, 0x34)):
                             TC_TCLink.setCVMLimitStates(tlv.getTag((0x84))[0], tlv.getTag((0x9F, 0x34))[0])
 
+                    # cryptogram reset for TRACK2DATA with non-compliant length
+                    #if tlv.tagCount((0x84)) and tlv.tagCount((0x57)) and tlv.tagCount((0x9F, 0x27)):
+                    #    TC_TCLink.SetTrack2NonCompliantLength(tlv.getTag((0x84))[0], tlv.getTag((0x57))[0], tlv.getTag((0x9F, 0x27))[0])
+                    
                     TC_TransactionHelper.vspDecrypt(tlv, tid, log)
                     TC_TransactionHelper.displayEncryptedTrack(tlv, log)
                     TC_TransactionHelper.displayHMACPAN(tlv, log)
@@ -2180,6 +2210,12 @@ def processTransaction(args):
                         # offline PIN
                         if encrypted_pin == 0x01:
                             getPINEntry(tlv)
+
+                    # VAS Processing
+                    if tlv.tagCount((0xC6)):
+                        walletId = TC_TransactionHelper.displayWalletId(tlv)
+                        if len(walletId):
+                            log.logwarning('VAS WALLET ID:', bytes.fromhex(walletId).decode('utf-8'))
 
                     if cardState != EMV_CARD_INSERTED:
                         processCtlsContinue()

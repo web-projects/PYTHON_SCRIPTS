@@ -372,5 +372,16 @@ def displayHMACPAN(tlv, log):
                 log.logwarning("HMAC PAN: TAG NOT FOUND")
     else:
         log.logwarning("HMAC PAN: NOT REPORTED")
-    
+
+def displayWalletId(tlv):
+    walletId = ''
+    if tlv.tagCount((0xC6)):
+        # TAG DFC601 - wallet identifier
+        vas = tlv.getTag((0xC6), TLVParser.CONVERT_HEX_STR)[0].upper()
+        vasIndex = vas.find('DFC601')
+        if vasIndex != -1:
+            dataLen = int(vas[vasIndex+6:vasIndex+8], 16) * 2
+            walletId = vas[vasIndex+8:vasIndex+8+dataLen]
+    return walletId
+
 # -------------------------------------------------------------------------------------- #

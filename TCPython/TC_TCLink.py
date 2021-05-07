@@ -43,9 +43,12 @@ PARTIAL_AUTH = 'n'
 IS_FALLBACK = 'n'
 FALLBACK_TYPE = ''
 ISBALANCEINQUIRY = False
+
+# Application based decisons and TAG changes
 FLOOR_LIMIT_EXCEEDED = False
 CVM_LIMIT_EXCEEDED = False
 CVM_ISBELOW_LIMIT = False
+TRACK2_NON_COMPLIANT_LENGTH = False
 
 # REFUND / CREDIT
 TRANSACTION_ID = ''
@@ -323,6 +326,7 @@ def saveEMVData(tlv, template, isBlindRefund = False):
     global LOG_INTERNAL_DATA, LOG
     global EMV_TAGS, POS_ENTRY_MODE, EMV_PROCESSING_CODE
     global PLATFORM, AID_TAGS, AID_LISTS, FLOOR_LIMIT_EXCEEDED, CVM_LIMIT_EXCEEDED, CVM_ISBELOW_LIMIT
+    global TRACK2_NON_COMPLIANT_LENGTH
     
     tag84HasBeenAdded = False
     
@@ -355,6 +359,10 @@ def saveEMVData(tlv, template, isBlindRefund = False):
                     cvm_value[2] = 0x08
                     tag[1] = cvm_value
                 print("TAG 9F33:", tag[1])
+            elif tag[0] == (0x9F, 0x27) and TRACK2_NON_COMPLIANT_LENGTH:
+                #9F27=00 # AAC  - transaction should be declined 
+                #9F27=80 # ARQC - transaction requires online authorization 
+                tag[1] = b'\x00'
             elif tag[0] == (0xBF, 0x0C):
                 try:
                     fci_data_padded = padTLVData(tag[1])
@@ -444,6 +452,7 @@ def saveEMVHEXMapTag(tag, hexConversion=True):
             bytearray(tag[0])), "=", hexlify(tag[1]))
         pass
 
+
 def saveMSRTrack2AndExpiry(track2, expiry):
     global MSR_TRACK2_DATA, MSR_EXPIRY_DATA
     
@@ -517,11 +526,14 @@ def getTransIdFromFile():
     
     return TRANSACTION_ID
 
+
 def getErrorType():
     return ERROR_TYPE
 
+
 def getResponseCode():
     return RESPONSE_CODE
+
 
 def showTCLinkResponse():
     global ERROR_TYPE, RESPONSE_CODE
@@ -757,3 +769,17 @@ def setCVMLimitStates(aid, cvm):
                 CVM_ISBELOW_LIMIT = True
             else:
                 CVM_LIMIT_EXCEEDED = True
+
+                
+def SetTrack2NonCompliantLength(aid, track2Data, cryptogram):
+    global TRACK2_NON_COMPLIANT_LENGTH
+    #aid_mc = 'A0000000031010'
+    aid_visa_list = AID_LISTS['firstdatarapidconnect']['creditAidList']
+    if len(aid_visa_list):
+        aid_value = hexlify(aid).upper()
+        if aid_value in aid_visa_list:
+            # non-compliant Track 2 Equivalent Data (38-characters/19-bytes)
+            #9F27=00 # AAC  - transaction should be declined 
+            #9F27=80 # ARQC - transaction requires online authorization 
+            if len(track2Data) >= 19 and cryptogram != b'\x00':
+                TRACK2_NON_COMPLIANT_LENGTH = True
