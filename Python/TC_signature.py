@@ -21,6 +21,16 @@ def traceit(frame, event, arg):
     return traceit
 
 
+def setupKeyboardReader():
+  log.log("Setup keyboard reader")
+  # collect response from user
+  # Bit 0 - Enter, Cancel, Clear keys
+  # Bit 1 - function keys
+  # Bit 2 - numeric keys
+  conn.send([0xD0, 0x61, 0x07, 0x00])
+  status, buf, uns = conn.receive()
+  
+  
 def getSignature():
    ''' First create connection '''
    req_unsolicited = conn.connect()
@@ -59,24 +69,30 @@ def getSignature():
       cc = str(cc[0], 'iso8859-1')
       log.log('COMMAND SIZE:', cc)
    
+   # keyboard reader
+   setupKeyboardReader()
+   
+    #
+    # --file upload/html/signature_keyPress.html --rfile www/mapp/signature.html
+    #
+   
    ''' html resource data '''
    signature_file = b'mapp/signature.html'
    signature_message = b'ENTER SIGNATURE'
-   signature_logo = b'signature.bmp'
+   signature_logo = b'signature.png'
    signature_tags = [
       [ (0xDF, 0xAA, 0x01), signature_file ],
-      [ (0xDF, 0xAA, 0x02), b'please_sign_text' ], 
-      [ (0xDF, 0xAA, 0x03), signature_message ],
-      [ (0xDF, 0xAA, 0x02), b'logo_image' ], 
-      [ (0xDF, 0xAA, 0x03), signature_logo ]
+      [ (0xDF, 0xAA, 0x02), b'please_sign_text' ], [ (0xDF, 0xAA, 0x03), signature_message ],
+      [ (0xDF, 0xAA, 0x02), b'logo_image' ],       [ (0xDF, 0xAA, 0x03), signature_logo ]
    ]
    signature_templ = ( 0xE0, signature_tags )
    
+   # display HTML
    conn.send( [0xD2, 0xE0, 0x00, 0x01], signature_templ )
    #sys.settrace(traceit)
    status, buf, uns = conn.receive()
    check_status_error( status )
-   
+
    ''' Check for HTML display result '''
    status, buf, uns = conn.receive()
    check_status_error( status )

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+    <body>        
+		<!-- HEADER H:40px -->
+		<div class="header">
+			<div style="height: 100%; display: table-cell; vertical-align: middle;">
+				<img src="<?var logo_image?>"/>
+			</div>
+		</div>
+		
+		<!-- CONTENT -->
+        <div class="content" style="height:80%;">
+		
+			<div class="body_text">
+				<div class="body_header" style="padding-bottom: 15px;"><?var title_text?></div>
+				<div class="<?ifz text display_none ?>">
+					<div class="body_message" style="padding-top: 15px;">
+						<?foreach text|(center)|[value](br)|(/center)|?>
+					</div>
+				</div>
+				<div style="height: 12px;"></div>
+			</div>
+                    
+			<!--INPUT-->
+			 <table cellpadding="0" 
+				cellspacing="0" 
+				border="0"
+				style="height: 30px;"
+				align="center">
+				<tr>
+					<td valign="top">
+						<input type="<?var TEMPLATE_INPUT_TYPE ?>" 
+							name='input_data' accesskey='&#13;'
+							maxlength="<?var max_length ?>"
+							allowed_chars="<?var allowed_chars ?>"
+							precision="<?var input_precision ?>"
+							mask="<?var mask?>"
+							autosize
+							class="regular_input" style="padding:10px;"
+							action="return 0" />
+					</td>
+					<td align="left" valign="top">
+						<button class="filter_clear_bttn" nofocus action='call input_data.sendkey(8)'>
+							<div class="clear_bttn_icon"></div>
+						</button>
+					</td>
+				</tr>
+			</table>
+			
+		</div> 
+					
+		<!--HELPERS-->
+        <!--To hide all helpers, please add "display_none" class to "helpers" class-->
+        <!--Also please comment <td width="1px;"><div class="helper_line"></div></td> line if needed -->
+        <div class="helpers">
+            <table cellpadding="0"
+                cellspacing="0"
+                border="0"
+                style="height: 100%;">
+                <tr>
+                    <!--Negative icon with text. to hide it, please add "display_none" class to "helper_block" class-->
+                    <td valign="top" width="1px">
+                        <div class="<?ifeq entry_mode_visibility hidden helper_block_v2?>
+                                    <?ifneq entry_mode_visibility hidden helper_block cancel?>">
+                            <table cellpadding="0"
+                                cellspacing="0"
+                                border="0"
+                                style="height: 100%; width: 100%;">
+                                <tr>
+                                    <td align="right">&nbsp;&nbsp;Cancel</td>
+                                    <td align="left"><img src="<?var img_path?>../img/helpers/x.png"></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </td>
+                    
+                    <td width="1px;"><div class="helper_line"></div></td>
+
+                    <!--Down icon with text. to hide it, please add "display_none" class to "helper_block" class-->
+                    <td valign="top" width="1px">
+                        <div class="helper_block_v3 <?ifeq entry_mode_visibility hidden display_none?>">
+                            <table cellpadding="0"
+                                cellspacing="0"
+                                border="0"
+                                style="height: 100%; width: 100%;">
+                                <tr>
+                                    <td align="right" width="45%"><?var entry_mode?></td>
+                                    <td align="right" width="10%"></td>
+                                    <td align="left" width="45%"><img src="../img/helpers/prev_enabled_next_disabled.png"></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </td>
+                    
+                    <td width="1px;"><div class="helper_line"></div></td>
+                    
+                    <!--Positive icon with text. to hide it, please add "display_none" class to "helper_block" class-->
+                    <td valign="top" width="1px">
+                        <div class="<?ifeq entry_mode_visibility hidden helper_block_v2?>
+                                    <?ifneq entry_mode_visibility hidden helper_block cancel?>">
+                            <table cellpadding="0"
+                                cellspacing="0"
+                                border="0"
+                                style="height: 100%; width: 100%;">
+                                <tr>
+                                    <td align="right">&nbsp;&nbsp;Enter</td>
+                                    <td align="left"><img src="<?var img_path?>../img/helpers/o.png"></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </td>
+                    
+                </tr>
+            </table>
+        </div>
+         
+        <!-- Change character set -->
+         <button accesskey='&#129;' action='return 200' style='visibility:hidden'></button>
+        
+        <!-- OK -->
+        <button accesskey='&#13;' action='return 0' style='visibility:hidden'></button>
+        <button accesskey='&#137;' action='return 0' style='visibility:hidden'></button>
+        <!-- CANCEL -->
+        <button accesskey='&#27;' action='return -1' style='visibility:hidden'></button>
+        <button accesskey='&#133;' action='return -1' style='visibility:hidden'></button>
+        <!-- timeout action -->
+        <input type="timeout" style="visibility: hidden" value="<?var timeout?>" action="return -3">
+
+    </body>
+</html>

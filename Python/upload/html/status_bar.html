@@ -1,0 +1,87 @@
+<html>
+    <body>
+        <div class="status_wrapper"><!--START [status_wrapper]-->
+            <table cellpadding="0" 
+                cellspacing="0" 
+                border="0"
+                align="center"
+                style="width: 210px; height: 100%;">
+                <tr>
+                    <td align="left"
+                        valign="top" width="30%">
+                        <!--Left status icons-->
+                        <!--GPRS-->
+                        <table cellpadding="0" 
+                            cellspacing="0" 
+                            border="0"
+                            style="height: 100%;">
+                            <tr>
+                                <td valign="top">
+                                    <div class="img">
+                                        <?ifn comm_icon (img src="../img/status_bar/(?var comm_icon?)")?>
+                                    </div>
+                                </td>
+                                <td valign="top"><span class="status_date_time">&nbsp;<?var sys_mob_netw_type?></span></td>
+                            </tr>
+                        </table>
+                    </td>
+                    <td width="40%" align="center" valign="top">
+                        <div class="status_date_time"><?var sys_time_12h?>:<?var sys_time_min?>&nbsp;<span class="small_time"><?var sys_time_am_pm?></span></div>
+                    </td>
+                    <td align="right"
+                        valign="middle">
+                        <table cellpadding="0" 
+                            cellspacing="0" 
+                            border="0"
+                            style="height: 100%;">
+                            <tr>
+                                <?ifexist app_locked 
+                                  (td align="left" valign="top")
+                                  (div class="img" style="padding-right: 5px")(img src="../img/status_bar/lock.png")(/div)
+                                  (/td)
+                                ?>
+                                <?ifexist sred_active 
+                                  (td align="left" valign="top")
+                                  (div class="img" style="padding-right: 5px")(img src="../img/status_bar/shield.png")(/div)
+                                  (/td)
+                                ?>
+                                <td align="right" class="bettery_percent" valign="top">
+                                    <div style="padding-right: 5px;"><?var sys_battery_percentage_2?></div>
+                                </td>
+                                <td align="right" valign="top">
+                                    <div class="img">
+                                      <?ifeq sys_battery_level -1 (img src="../img/status_bar/battery_unavailable.png")?>
+                                      <?ifeq sys_battery_level 0 (img src="../img/status_bar/battery_1.png")?>
+                                      <?ifeq sys_battery_level 1 (img src="../img/status_bar/battery_5.png")?>
+                                      <?ifeq sys_battery_level 2 (img src="../img/status_bar/battery_10.png")?>
+                                      <?ifeq sys_battery_level 3 (img src="../img/status_bar/battery_20.png")?>
+                                      <?ifeq sys_battery_level 4 (img src="../img/status_bar/battery_30.png")?>
+                                      <?ifeq sys_battery_level 5 (img src="../img/status_bar/battery_40.png")?>
+                                      <?ifeq sys_battery_level 6 (img src="../img/status_bar/battery_50.png")?>
+                                      <?ifeq sys_battery_level 7 (img src="../img/status_bar/battery_60.png")?>
+                                      <?ifeq sys_battery_level 8 (img src="../img/status_bar/battery_70.png")?>
+                                      <?ifeq sys_battery_level 9 (img src="../img/status_bar/battery_80.png")?>
+                                      <?ifeq sys_battery_level 10 (img src="../img/status_bar/battery_90.png")?>
+                                      <?ifeq sys_battery_level 11 (img src="../img/status_bar/battery_100.png")?>
+                                      <?ifeq sys_battery_level 100 (img src="../img/status_bar/battery_charging_1.png")?>
+                                      <?ifeq sys_battery_level 101 (img src="../img/status_bar/battery_charging_5.png")?>
+                                      <?ifeq sys_battery_level 102 (img src="../img/status_bar/battery_charging_10.png")?>
+                                      <?ifeq sys_battery_level 103 (img src="../img/status_bar/battery_charging_20.png")?>
+                                      <?ifeq sys_battery_level 104 (img src="../img/status_bar/battery_charging_30.png")?>
+                                      <?ifeq sys_battery_level 105 (img src="../img/status_bar/battery_charging_40.png")?>
+                                      <?ifeq sys_battery_level 106 (img src="../img/status_bar/battery_charging_50.png")?>
+                                      <?ifeq sys_battery_level 107 (img src="../img/status_bar/battery_charging_60.png")?>
+                                      <?ifeq sys_battery_level 108 (img src="../img/status_bar/battery_charging_70.png")?>
+                                      <?ifeq sys_battery_level 109 (img src="../img/status_bar/battery_charging_80.png")?>
+                                      <?ifeq sys_battery_level 110 (img src="../img/status_bar/battery_charging_90.png")?>
+                                      <?ifeq sys_battery_level 111 (img src="../img/status_bar/battery_charging_99.png")?>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div><!--END [status_wrapper]-->
+    </body>
+</html>

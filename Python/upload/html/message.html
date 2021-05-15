@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+    <body>          
+        <!-- HEADER H:40px -->
+        <div class="header">
+            <div style="height: 100%; display: table-cell; vertical-align: middle;">
+                <img src="<?var logo_image?>"/>
+            </div>
+        </div>
+            
+        <!-- CONTENT -->
+        <div class="content" style="
+                background-image:url('<?var TEMPLATE_BKG_IMG0?>');
+                background-repeat:no-repeat;
+                background-position:center;
+                height:90%;">
+            <!--ICON-->
+			<?ifexist TEMPLATE_IMG_QR (
+            (center class="alert_icon")
+				(?varhtml TEMPLATE_IMG_QR?)
+            (/center)
+            ?>
+            <!--TEXT-->
+            <?ifexist TEMPLATE_TEXT0 (div class="body_header")(?textvar TEMPLATE_TEXT0?)(/div) ?>
+            <?ifexist TEMPLATE_TEXT1 (div class="body_message")(?textvar TEMPLATE_TEXT1?)(/div) ?>
+			<?ifexist TEMPLATE_VAR0 (div class="content" style="display: table-cell;(?var text_style?)")(?varhtml TEMPLATE_VAR0?)(/div) ?>
+
+        </div>
+
+        <!-- <div class="helpers"> -->
+        </div>
+    </body>
+</html>

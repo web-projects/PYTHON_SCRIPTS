@@ -1011,6 +1011,8 @@ def processEMV(tid):
                     
             if tlv.tagCount(0xE5):
                 log.log("Transaction declined offline")
+                # encrypted track
+                displayEncryptedTrack(tlv)
                 return 2
                 
             break
@@ -1032,6 +1034,9 @@ def processEMV(tid):
         # Check for Contact EMV Capture
         # print(">>> EMV Data 3 ff7f", tlv.tagCount((0xFF,0x7F)))
 
+        # encrypted track
+        displayEncryptedTrack(tlv)
+                    
         if hasPINEntry == True:
             # expect Template E6 already collected PIN: retrieve PIN KSN/ENCRYPTED DATA
             if len(OnlineEncryptedPIN) == 0 or len(OnlinePinKSN) == 0:
@@ -1062,6 +1067,13 @@ def displayCustomMsg(message, pause = 0):
         sleep(pause)
 
 def displayEncryptedTrack(tlv):
+
+  # CARDHOLDER NAME - VIPA 6.8.2.17 or above
+  if tlv.tagCount((0x5F, 0x20)):
+    cardholderName = tlv.getTag((0x5F, 0x20))[0]
+    if len(cardholderName):
+      log.logwarning('CARDHOLDER NAME: \"' + str(cardholderName, 'iso8859-1') + '\"')
+
   sRED = tlv.getTag((0xFF, 0x7F), TLVParser.CONVERT_HEX_STR)[0].upper()
   if len(sRED):
     log.log("SRED DATA: " + sRED)
@@ -1421,6 +1433,9 @@ def processTransaction():
                     log.logerr('CVM REQUESTED:', cvm_value)                
                     # decrypt transaction                
                     vspDecrypt(tlv, tid)
+
+                    # encrypted track
+                    displayEncryptedTrack(tlv)
                     
                     if cvm_value == 'ONLINE PIN':
                       return OnlinePinTransaction(tlv, tid, cardState, setFirstGenContinueTransaction()) 

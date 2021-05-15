@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+    <body>          
+        <!-- HEADER H:40px -->
+		
+        <div class="header">
+            <div style="height: 100%; display: table-cell; vertical-align: middle;">
+                <img src="<?var logo_image?>"/>
+            </div>
+        </div>
+		
+        <div style="height: 13%;">
+            <div class="body_header"><?var title?></div>
+            <!-- var body_message not supported -->
+        </div>
+                
+        <div class="content" style="overflow: auto; height: 67%;">
+            <!--Buttons list-->
+            <?foreach json_array ||(button class="regular_bttn focusable_bttn" action="return [index]" [focus])
+                    (table cellpadding="0"
+                       cellspacing="0"
+                       border="0"
+                       style="height: 100%;
+                       width: 100%;")
+                    (tr)
+                        (td align="left" valign="middle")
+                            (div class="regular_bttn_text")[name](/div)
+                        (/td)
+                    (/tr)
+                (/table)
+            (/button)| ?>
+        </div>
+		
+        <!--HELPERS-->
+        <!--To hide all helpers, please add "display_none" class to "helpers" class-->
+        <!--Also please comment <td width="1px;"><div class="helper_line"></div></td> line if needed -->
+        <div class="helpers">
+            <table cellpadding="0"
+                cellspacing="0"
+                border="0"
+                style="height: 100%;">
+                <tr>
+                    <!--Negative icon with text. to hide it, please add "display_none" class to "helper_block" class-->
+                    <td valign="top" width="1px">
+                        <div class="helper_block cancel <?ifeq skipping_allowed no display_none?>">
+                            <table cellpadding="0"
+                                cellspacing="0"
+                                border="0"
+                                style="height: 100%; width: 100%;">
+                                <tr>
+                                    <td align="right">&nbsp;&nbsp;Cancel</td>
+                                    <td align="left"><img src="../img/helpers/x.png"></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </td>
+                    
+                    <td width="1px;">
+                        <div class="helper_line <?ifeq skipping_allowed no display_none?>" align="center"></div>
+                    </td>
+
+                    <td valign="top" align="center" width="1px">
+                        <div class="helper_block_v3">
+                            <table cellpadding="0"
+                                cellspacing="0"
+                                border="0"
+                                style="height: 100%; width: 100%;">
+                                <tr>
+                                    <td align="center"><img src="../img/helpers/prev_enabled_next_enabled.png"></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </td>
+
+                    <td width="1px;">
+                        <div class="helper_line" align="center"></div>
+                    </td>
+                    
+                    <!--Positive icon with text. to hide it, please add "display_none" class to "helper_block" class-->
+                    <td valign="top" width="1px">
+                        <div class="helper_block">
+                            <table cellpadding="0"
+                                cellspacing="0"
+                                border="0"
+                                style="height: 100%; width: 100%;">
+                                <tr>
+                                    <td align="right">&nbsp;&nbsp;Enter</td>
+                                    <td align="right"><img src="../img/helpers/o.png"></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        
+        <!--HIDDEN BUTTONS-->
+        <?ifneq skipping_allowed no
+            (button action='return -1' accesskey='&#27;' style="visibility: hidden")(/button)
+        ?>
+        <?ifneq clear_key_inhibited 1
+            (button action='return 10008' accesskey='&#8;' style="visibility: hidden")(/button)
+        ?>
+        <button action='call active.action()' accesskey='&#13;' style="visibility: hidden"></button>
+        <button action='call focus.previous()' accesskey='&#130;' style="visibility: hidden"></button>
+        <button action='call focus.previous()' accesskey='&#129;' style="visibility: hidden"></button>
+        <button action='call focus.previous()' accesskey='&#138;' style="visibility: hidden"></button>
+        <button action='call focus.next()' accesskey='&#131;' style="visibility: hidden"></button>
+        <button action='call focus.next()' accesskey='&#132;' style="visibility: hidden"></button>
+        <button action='call focus.next()' accesskey='&#139;' style="visibility: hidden"></button>
+        <?ifneq skipping_allowed no
+            (button action='return -1' accesskey='&#133;' style="visibility: hidden")(/button)
+        ?>
+        <button action='call active.action()' accesskey='&#137;' style="visibility: hidden"></button>
+        
+        <input type="timeout" value=<?var timeout?><?ifnexist timeout -1?> style="visibility:hidden" action="return -3"/>
+    </body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<body>
+<!-- enter -->
+<button accesskey='&#13;' action='return 13' style='visibility:hidden'></button>
+<!-- clear -->
+<button accesskey='&#8;' action='return 8' style='visibility:hidden'></button>
+<!-- cancel -->
+<button accesskey='&#27;' action='return 27' style='visibility:hidden'></button>
+<!-- enter + 1 -->
+<!-- returned value as <ASCII><DIGIT> e.g.: 1304, 13 (ASCII) - enter, 04 (DIGIT) - 4 -->
+<button accesskey='&#13;+1' action='return 1301' style='visibility:hidden'></button>
+<!-- clear + 1 -->
+<button accesskey='&#8;+1' action='return 801' style='visibility:hidden'></button>
+
+<!-- Function keys -->
+<button accesskey='&#129;' action='return 129' style='visibility:hidden'/><!-- F1, joystick up -->
+<button accesskey='&#130;' action='return 130' style='visibility:hidden'/><!-- F2, joystick left -->
+<button accesskey='&#131;' action='return 131' style='visibility:hidden'/><!-- F3, joystick right -->
+<button accesskey='&#132;' action='return 132' style='visibility:hidden'/><!-- F4, joystick down -->
+<button accesskey='&#133;' action='return 133' style='visibility:hidden'/><!-- M0 -->
+<button accesskey='&#134;' action='return 134' style='visibility:hidden'/><!-- M1, UX up -->
+<button accesskey='&#135;' action='return 135' style='visibility:hidden'/><!-- Alpha, joystick middle -->
+<button accesskey='&#136;' action='return 136' style='visibility:hidden'/><!-- M2, UX down -->
+<button accesskey='&#137;' action='return 137' style='visibility:hidden'/><!-- M3 -->
+<button accesskey='&#138;' action='return 138' style='visibility:hidden'/><!-- F10, * -->
+<button accesskey='&#139;' action='return 139' style='visibility:hidden'/><!-- F11, # -->
+<button accesskey='&#140;' action='return 140' style='visibility:hidden'/><!-- UX info -->
+
+<!-- Numeric keys -->
+<?ifeq numeric 1
+(button accesskey='0' action='return 30' style='visibility:hidden'/)
+(button accesskey='1' action='return 31' style='visibility:hidden'/)
+(button accesskey='2' action='return 32' style='visibility:hidden'/)
+(button accesskey='3' action='return 33' style='visibility:hidden'/)
+(button accesskey='4' action='return 34' style='visibility:hidden'/)
+(button accesskey='5' action='return 35' style='visibility:hidden'/)
+(button accesskey='6' action='return 36' style='visibility:hidden'/)
+(button accesskey='7' action='return 37' style='visibility:hidden'/)
+(button accesskey='8' action='return 38' style='visibility:hidden'/)
+(button accesskey='9' action='return 39' style='visibility:hidden'/)
+?>
+</body>
+</html>

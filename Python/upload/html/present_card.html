@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+	<body>        
+		<!-- HEADER H:40px -->
+		<div class="header">
+			<div style="height: 100%; display: table-cell; vertical-align: middle;">
+				<img src="<?var logo_image?>"/>
+			</div>
+		</div>
+		<!--Present card alert-->
+		<!-- CONTENT -->
+		<div class="content">
+			<!--ICON-->
+			<center class="alert_icon">
+			 	<table cellpadding="0"
+					   cellspacing="0"
+					   border="0"
+					   align="center"
+					   class="ctls_card_table_<?var ctls_enability ?>"
+					   style="width: 10px; padding-top: 40px;">
+					<tr>
+						<?foreach select_card_technology ||
+							(td align="center" width="33%")
+								(div style="padding: 0px 10px;")(img src="../img/[key]_small.png" /)(/div)
+							(/td)
+						| ?>
+									
+					</tr>
+				</table>
+			</center>
+			
+			<div class="body_header"><?var body_header ?></div>
+			<?foreach messages || (div class="body_message")[text](/div) | ?>
+		
+		</div>
+	</body>
+</html>
