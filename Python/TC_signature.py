@@ -72,9 +72,9 @@ def getSignature():
    # keyboard reader
    setupKeyboardReader()
    
-    #
-    # --file upload/html/signature_keyPress.html --rfile www/mapp/signature.html
-    #
+   #
+   # --file upload/html/signature_keyPress.html --rfile www/mapp/signature.html
+   #
    
    ''' html resource data '''
    signature_file = b'mapp/signature.html'

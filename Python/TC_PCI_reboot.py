@@ -43,6 +43,7 @@ def getTerminalTime():
     #log.log('BUF:', buf[0])
     timestamp = buf[0].decode()
     #log.log('TIMESTAMP:' + timestamp)
+    log.logerr('TERMINAL DATE: ' + timestamp[:8])
     log.logerr('TERMINAL TIME: ' + timestamp[8:])
 
 def rebootDevice():
