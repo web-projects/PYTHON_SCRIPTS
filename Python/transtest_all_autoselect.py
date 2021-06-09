@@ -18,6 +18,9 @@ import getpass
 import datetime
 import traceback
 
+# MiFare - inner tag processing
+from testharness.tlvparser import TLVPrepare
+
 # pip install pyperclip
 import pyperclip
 
@@ -662,7 +665,7 @@ def performUserPINEntry():
 
 # Ask for card removal and waits until card is removed
 def removeEMVCard():
-    # Display Remove card
+    # Display Remove card (with beeps)
     conn.send([0xD2, 0x01, 0x0E, 0x01])
     status, buf, uns = getAnswer(False)
     if status != 0x9000:
@@ -950,7 +953,10 @@ def processEMV(tid):
     #Let's check VSP
     tlv = TLVParser(buf)
     vspDecrypt(tlv, tid)
-        
+
+    # ENCRYPTED TRACK DATA
+    displayEncryptedTrack(tlv)
+       
     #TC_TCLink.saveCardData(tlv)
     print(">> before continue: ", str(tlv))
 
@@ -1042,7 +1048,7 @@ def processEMV(tid):
             if len(OnlineEncryptedPIN) == 0 or len(OnlinePinKSN) == 0:
                 # save EMV Tags
                 #TC_TCLink.saveEMVData(tlv, 0xE5)
-                OnlinePinInTemplateE6()
+                OnlinePinInTemplateE6(tlv, EMV_CARD_INSERTED, continue_tpl)
             # save continue tpl in case of PIN retry
             OnlinePinContinueTPL = continue_tpl
 
@@ -1221,18 +1227,39 @@ def startContactless(preferredAID=''):
     #     * this feature is used primarily for SCA
     #     Bit 7 (0x80)
     #     stop on MIFARE command processing errors (only valid when bit 1 is set)
-    P1 = 0x01
+    P1 = 0x03
     conn.send([0xC0, 0xA0, P1, 0x00], start_ctls_templ)
 
     log.log('Starting Contactless transaction')
 
+
+def Tags2Array(tags):
+	tlvp = TLVPrepare()
+	arr = tlvp.prepare_packet_from_tags(tags)
+	del arr[0]
+	return arr
+
+  
 # Processes contactless continue
 def processCtlsContinue():
     #Create localtag for transaction
+
+    # MiFare Tags
+    innerMiFareTags = [
+      [(0xDF,0xA5, 0x01), b'\x02'],                     # Command code: 02 = R(ead)
+      [(0xDF,0xA5, 0x02), b'\x01'],
+      [(0xDF,0xC0, 0x5B), b'\x01'],                     # Authentication key type (0/1)
+      [(0xDF,0xC0, 0x5C), b'\xFF\xFF\xFF\xFF\xFF\xFF'], # Authentication key: 6 bytes
+      [(0xDF,0xC0, 0x5D), b'\x04'],                     # Starting block
+      [(0xDF,0xC0, 0x5E), b'\x03']                      # Block count
+    ]
+    
     continue_ctls_tag = [
         ACQUIRER_ID,
-        CONTINUE_REQUEST_AAC,
-        AUTHRESPONSECODE
+        CONTINUE_REQUEST_AAC,                   # Host Decision: 01 = Approved
+        AUTHRESPONSECODE,
+        # MIFARE IMPLEMENTATION
+        [(0xDF, 0xC0, 0x30), Tags2Array(innerMiFareTags) ]
     ]
     continue_ctls_templ = ( 0xE0, continue_ctls_tag )
     
@@ -1467,6 +1494,13 @@ def processTransaction():
                     processCtlsContinue()
                     tranType = 3
                     break
+                    
+                    
+                if tlv.tagCount(0xE8):
+                  processCtlsContinue()
+                  tranType = 3
+                  break;
+                
                 if status != 0x9000:
                     if status == 0x9F33: # Fallforward to ICC / Swipe
                         promptForCard()
