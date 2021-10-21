@@ -31,3 +31,4 @@ Python Code Scripts.
 ### HISTORY ###
 
 * 20210406 - Initial repository
+* 20211021 - Added arguments support to TC_transtest_all_autoselect_EMV.py

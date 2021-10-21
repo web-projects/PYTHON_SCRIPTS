@@ -17,6 +17,7 @@ import sys
 import getpass
 import datetime
 import traceback
+import testharness.utility as util
 
 # MiFare - inner tag processing
 from testharness.tlvparser import TLVPrepare
@@ -80,8 +81,13 @@ COUNTRY_CODE  = [(0x9F, 0x1A), US]
 #AUTHRESPONSECODE = [ (0x8A), [0x59, 0x32] ]  # authorization response code of Y2
 AUTHRESPONSECODE = [ (0x8A), [0x5A, 0x33] ]  # authorization response code of Z3
 
-CONTINUE_REQUEST_TC  = [ (0xC0), [0x00] ]   # Offline (Z3)
-CONTINUE_REQUEST_AAC = [ (0xC0), [0x01] ]   # Online (00)
+# After an AAR (Application Authorisation Referral) or ARQC (Authorisation Request Cryptogram) where the acquirer
+# is contacted, the decision is made with tag C0. If the acquirer cannot be contacted or a stand-in authorisation
+# is detected, do not send this tag. By not sending the tag, default analysis is carried out.
+#
+# ‘C0’ must be sent in the next ‘Continue Transaction’ command, set as positive (0x01) to request a TC or negative (0x00) to request an AAC.
+CONTINUE_REQUEST_AAC = [(0xC0), [0x00]]  # Online (00)
+CONTINUE_REQUEST_TC = [(0xC0), [0x01]]  # Offline (Z3)
 
 ISOFFLINE = AUTHRESPONSECODE[1] == [0x5A, 0x33]
 
@@ -114,7 +120,7 @@ VISA_CDET23_TC06   = b'\x00\x00\x00\x00\x06\x06'   # VISA CDET 2.3 TEST CASE 06
 VISA_CDET23_TC09   = b'\x00\x00\x00\x00\x09\x00'   # VISA CDET 2.3  TEST CASE 09
 
 ## TRANSACTION AMOUNT
-SMALL_AMOUNT = b'\x00\x00\x00\x00\x32\x50'
+SMALL_AMOUNT = b'\x00\x00\x00\x00\x11\x50'
 LARGE_AMOUNT = b'\x00\x00\x09\x99\x99\x99' 
 
 ### --- CHANGE AMOUNT VALUE HERE ---v
@@ -126,6 +132,10 @@ APPLICATION_LABEL = ''
 
 # PROCESSING
 EMV_VERIFICATION = 0
+
+# CONTACTLESS CARD WORKFLOWS
+ENABLE_EMV_CONTACTLESS = True
+
 
 # ---------------------------------------------------------------------------- #
 # ONLINE PIN VSS DUPKT
@@ -152,6 +162,8 @@ PIN_ATTEMPTS = 2
 
 OnlineEncryptedPIN = ""
 OnlinePinKSN = ""
+
+ENABLE_MiFARE = False
 
 # Convert int to BCD
 # From: https://stackoverflow.com/questions/57476837/convert-amount-int-to-bcd
@@ -726,7 +738,14 @@ def processMagstripeFallback(tid):
     if MagstripeCardState(tlv) == MAGSTRIPE_TRACKS_AVAILABLE:
         log.logerr('Attempting to decrypt SWIPE...')
         vspDecrypt(tlv, tid)
-        
+    
+    # cardholder name
+    displayEncryptedTrack(tlv)
+    
+    # HMAC PAN
+    displayHMACPAN(tlv)
+
+    
     # We're done!
     return 5
 
@@ -877,13 +896,26 @@ def processEMV(tid):
     # START TRANSACTION [DE D1]
     conn.send([0xDE, 0xD1, 0x00, 0x00], start_templ)
 
+    # technical fallback requirement
+    unsupported_card_index = 1
+
     while True:
+    
         #sleep(1)
         #conn.send([0xD0, 0xFF, 0x00, 0x00])
         status, buf, uns = getEMVAnswer()
         if status != 0x9000:
             if status == 0x9F28:
-                return processMagstripeFallback(tid)
+                unsupported_card_index = unsupported_card_index + 1
+                if unsupported_card_index == 2:
+                  log.logerr("TECHNICAL FALLBACK --------------------------------------------------------")
+                  return processMagstripeFallback(tid)
+                else:
+                  displayMsg("\tUNSUPPORTED CARD\n\n\tREINSERT", 2)
+                  removeEMVCard()
+                  # START TRANSACTION [DE D1]
+                  conn.send([0xDE, 0xD1, 0x00, 0x00], start_templ)
+                  continue
             else:
                 log.logerr('Transaction terminated with status ', hex(status))
                 return -1
@@ -896,7 +928,9 @@ def processEMV(tid):
                 log.log('Ignoring unsolicited packet ', tlv)
                 continue
         else:
+        
             tlv = TLVParser(buf)
+        
             if tlv.tagCount(0x50) > 1 and tlv.tagCount((0x9F, 0x06)) > 1:
                 # This is app selection stuff
                 appLabels = tlv.getTag(0x50)
@@ -956,9 +990,13 @@ def processEMV(tid):
 
     # ENCRYPTED TRACK DATA
     displayEncryptedTrack(tlv)
+        
+    if tlv.tagCount(0xE2):
+      # HMAC PAN
+      displayHMACPAN(tlv)
        
     #TC_TCLink.saveCardData(tlv)
-    print(">> before continue: ", str(tlv))
+    #print(">> before continue: ", str(tlv))
 
     # 1st Generation AC
     continue_tpl = sendFirstGenAC(tlv, tid)
@@ -975,7 +1013,9 @@ def processEMV(tid):
             if EMV_VERIFICATION == 0x00:
                 displayMsg("DECLINED: OFFLINE", 2) 
             return -1
+        
         tlv = TLVParser(buf)
+        
         if uns and status == 0x9000:
             #print(tlv)
             if tlv.tagCount(0xE6):
@@ -991,6 +1031,7 @@ def processEMV(tid):
                 log.log('Ignoring unsolicited packet ', tlv)
                 continue
         else:
+                    
             if tlv.tagCount(0xE3):
                 log.log("Transaction approved offline")
                 return 1
@@ -1000,6 +1041,9 @@ def processEMV(tid):
                 # Terminal Capabilites
                 reportTerminalCapabilities(tlv)
                     
+                # HMAC PAN
+                displayHMACPAN(tlv)
+                
                 cvm_value = getCVMResult(tlv)
                 # NOT AN EROR, JUST EASIER TO FIND IN THE TERMINAL OUTPUT
                 log.logerr('CVM REQUESTED:', cvm_value)
@@ -1014,7 +1058,7 @@ def processEMV(tid):
                 # check for OFFLINE PIN ENTRY: KSN/ENCRYPTED DATA PAIR not to be extracted since PIN is OFFLINE verified
                 if "ENCRYPTED" in cvm_value or "PLAIN PIN" in cvm_value:
                     hasPINEntry = False
-                    
+
             if tlv.tagCount(0xE5):
                 log.log("Transaction declined offline")
                 # encrypted track
@@ -1042,7 +1086,7 @@ def processEMV(tid):
 
         # encrypted track
         displayEncryptedTrack(tlv)
-                    
+        
         if hasPINEntry == True:
             # expect Template E6 already collected PIN: retrieve PIN KSN/ENCRYPTED DATA
             if len(OnlineEncryptedPIN) == 0 or len(OnlinePinKSN) == 0:
@@ -1065,12 +1109,14 @@ def displayMsg(message, pause = 0):
     if pause > 0:
         sleep(pause)
 
+
 def displayCustomMsg(message, pause = 0):
     # DISPLAY [D2, 01]
     conn.send([0xD2, 0x01, message, 0x01])
     status, buf, uns = getAnswer()
     if pause > 0:
         sleep(pause)
+
 
 def displayEncryptedTrack(tlv):
 
@@ -1129,7 +1175,7 @@ def displayEncryptedTrack(tlv):
         encryptionStatus = sRED[encryptionStatusIndex+8:encryptionStatusIndex+8+dataLen]
         if len(encryptionStatus):
           log.log("ENCRYTION STATUS: " + encryptionStatus)
-        
+
 
 def displayHMACPAN(tlv):
   sRedTag = tlv.tagCount((0xFF, 0x7C))
@@ -1141,16 +1187,24 @@ def displayHMACPAN(tlv):
       dataLen = int(sRED[panIndex+6:panIndex+8], 16) * 2
       panData = sRED[panIndex+8:panIndex+8+dataLen]
       if len(panData):
-        log.logwarning("HMAC PAN:", panData)
+        log.logwarning("HMAC PAN TOKEN:", panData)
     else:
-      log.logwarning("HMAC PAN: TAG NOT FOUND")
+      log.logwarning("HMAC PAN TOKEN: TAG NOT FOUND")
   else:
-    log.logwarning("HMAC PAN: NOT REPORTED")
-    
+    log.logwarning("HMAC PAN TOKEN: NOT REPORTED")
+
+
 # ---------------------------------------------------------------------------- #
 # Contactless Workflow
 # ---------------------------------------------------------------------------- #
-    
+
+def Tags2Array(tags):
+  tlvp = TLVPrepare()
+  arr = tlvp.prepare_packet_from_tags(tags)
+  del arr[0]
+  return arr
+
+
 # Inits contactless device
 def initContactless():
     #Get contactless count
@@ -1174,6 +1228,7 @@ def initContactless():
         log.log('No contactless driver found')
     return ctls
 
+
 # Start Contactless Transaction
 def startContactless(preferredAID=''):
     global AMOUNT, AMTOTHER, DATE, TIME
@@ -1182,13 +1237,15 @@ def startContactless(preferredAID=''):
 
     # Start Contactless transaction
     start_ctls_tag = [
+        [(0x9C), TRANSACTION_TYPE],   # transaction type
         [(0x9F, 0x02), AMOUNT],       # amount
         [(0x9F, 0x03), AMTOTHER],     # cashback
         [(0x9A), DATE],               # system date
         [(0x9F,0x21), TIME],          # system time
-        #[(0x9C), b'\x00'],           # transaction type
-        #[(0x9F,0x41), b'\x00\x01'],  # sequence counter
+        #[(0x9F,0x41), b'\x00\x01'],   # sequence counter
+        #[(0xDF,0xA2,0x04), b'\x01'],  # Application selection using PINPad
         #AUTHRESPONSECODE,
+        #[(0xDF, 0xDF, 0x0D), b'\x02'],# Don't force transaction online
         CURRENCY_CODE,                # currency code
         COUNTRY_CODE                  # country code
     ]
@@ -1199,9 +1256,9 @@ def startContactless(preferredAID=''):
     if len(preferredAID):
         # Preferred Application selected
         start_ctls_tag.append(preferredAID)
-    #else:
-    #    # Application Identifier Terminal (AID)
-    #    start_ctls_tag.append([(0x9F, 0x06), b'\x00\x01'])
+    else:
+        # Application Identifier Terminal (AID)
+        start_ctls_tag.append([(0x9F, 0x06), b'\x00\x01'])
     
     # VAS Transactions VIPA 6.8.2.17+
     if ENABLE_VAS_REPORTING:
@@ -1227,43 +1284,63 @@ def startContactless(preferredAID=''):
     #     * this feature is used primarily for SCA
     #     Bit 7 (0x80)
     #     stop on MIFARE command processing errors (only valid when bit 1 is set)
-    P1 = 0x03
+    P1 = 0x02 if ENABLE_MiFARE else 0x01
     conn.send([0xC0, 0xA0, P1, 0x00], start_ctls_templ)
 
     log.log('Starting Contactless transaction')
 
 
-def Tags2Array(tags):
-	tlvp = TLVPrepare()
-	arr = tlvp.prepare_packet_from_tags(tags)
-	del arr[0]
-	return arr
-
-  
 # Processes contactless continue
-def processCtlsContinue():
-    #Create localtag for transaction
+#
+# Terminal displays "NOT AUTHORISED", because transaction was declined from host - 
+# ("Continue Contactless Transaction" was sent with
+#  TAG C0 = 00 (declined)).
+# Transaction was declined, because POS requested it, after that terminal displayed "Approved", 
+# because POS sent Display Command with text "Approved".
+#
+def continueContactless():
 
-    # MiFare Tags
-    innerMiFareTags = [
-      [(0xDF,0xA5, 0x01), b'\x02'],                     # Command code: 02 = R(ead)
-      [(0xDF,0xA5, 0x02), b'\x01'],
-      [(0xDF,0xC0, 0x5B), b'\x01'],                     # Authentication key type (0/1)
-      [(0xDF,0xC0, 0x5C), b'\xFF\xFF\xFF\xFF\xFF\xFF'], # Authentication key: 6 bytes
-      [(0xDF,0xC0, 0x5D), b'\x04'],                     # Starting block
-      [(0xDF,0xC0, 0x5E), b'\x03']                      # Block count
-    ]
-    
+    log.log("CONTINUE CLESS-TRANSACTION: GenAC2 -----------------------------------------------------------------------------")
+
+    #Create localtag for transaction
     continue_ctls_tag = [
         ACQUIRER_ID,
-        CONTINUE_REQUEST_AAC,                   # Host Decision: 01 = Approved
-        AUTHRESPONSECODE,
-        # MIFARE IMPLEMENTATION
-        [(0xDF, 0xC0, 0x30), Tags2Array(innerMiFareTags) ]
+        # CO
+        # Host Decision – Mandatory:
+        # • 00 – Declined
+        # • 01 – Approved
+        # • 02 – Failed to connect
+        #CONTINUE_REQUEST_AAC,                           # Host Decision: 00 = Declined
+        #CONTINUE_REQUEST_TC,                            # Host Decision: 01 = Approved
+        AUTHRESPONSECODE
     ]
+    
+    # MIFARE IMPLEMENTATION
+    if ENABLE_MiFARE:
+    # MiFare Tags
+      innerMiFareWriteTags = [
+        [(0xDF,0xA5, 0x01), b'\x03'],                     # Command code: 03 = W(rite)
+        [(0xDF,0xA5, 0x02), b'\x01'],                     # Command Id
+        [(0xDF,0xC0, 0x5B), b'\x01'],                     # Authentication key type (0/1)
+        [(0xDF,0xC0, 0x5C), b'\xFF\xFF\xFF\xFF\xFF\xFF'], # Authentication key: 6 bytes
+        [(0xDF,0xC0, 0x5D), b'\x04'],                     # Starting block
+        [(0xDF,0xC0, 0x5E), b'\x03'],                     # Block count
+        [(0xDF,0xC0, 0x5F), b'\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F']
+      ]
+      innerMiFareReadTags = [
+        [(0xDF,0xA5, 0x01), b'\x02'],                     # Command code: 02 = R(ead)
+        [(0xDF,0xA5, 0x02), b'\x01'],                     # Command Id
+        [(0xDF,0xC0, 0x5B), b'\x01'],                     # Authentication key type (0/1)
+        [(0xDF,0xC0, 0x5C), b'\xFF\xFF\xFF\xFF\xFF\xFF'], # Authentication key: 6 bytes
+        [(0xDF,0xC0, 0x5D), b'\x04'],                     # Starting block
+        [(0xDF,0xC0, 0x5E), b'\x03']                      # Block count
+      ]
+      continue_ctls_tag.append([(0xDF, 0xC0, 0x30), Tags2Array(innerMiFareWriteTags)])
+      continue_ctls_tag.append([(0xDF, 0xC0, 0x30), Tags2Array(innerMiFareReadTags)])
+
     continue_ctls_templ = ( 0xE0, continue_ctls_tag )
     
-    #Start transaction
+    # continue transaction
     conn.send([0xC0, 0xA1, 0x00, 0x00], continue_ctls_templ)
     status, buf, uns = getAnswer()
     log.log('Waiting for Contactless Continue')
@@ -1274,6 +1351,7 @@ def processCtlsContinue():
             break
         log.logerr('Unexpected packet detected, ', TLVParser(buf))
 
+
 def cancelContactless():
     log.logerr("Stopping Contactless transaction")
     # CANCEL CONTACTLESS TRANSACTION [C0 C0]
@@ -1281,24 +1359,30 @@ def cancelContactless():
     status, buf, uns = getAnswer()
     status, buf, uns = getAnswer(False) # Ignore unsolicited as the answer WILL BE unsolicited... 
 
+
 # Prompts for card insertion
 def promptForCard():
     #Prompt for card
     conn.send([0xD2, 0x01, 0x0D, 0x01])
     status, buf, uns = getAnswer()
 
+
 # ---------------------------------------------------------------------------- #
 # Main function
 # ---------------------------------------------------------------------------- #
-def processTransaction():
+def processTransaction(args):
 
-    global DATE, TIME, EMV_ENABLED
+    global DATE, TIME, EMV_ENABLED, AMOUNT
     
     # TIMESTAMP
     now = datetime.datetime.now()
     DATE = bcd(now.year % 100) + bcd(now.month) + bcd(now.day)
     TIME = bcd(now.hour % 100) + bcd(now.minute) + bcd(now.second)
     
+    if args.amount != 0:
+      AMOUNT = bcd(args.amount + args.amtother, 6)
+      #log.log('TRANSACTION AMOUNT: $', AMOUNT)
+      
     req_unsolicited = conn.connect()
     if req_unsolicited:
         #Receive unsolicited
@@ -1341,7 +1425,9 @@ def processTransaction():
     # Bit 1 - Requests the ATR in the response (tag 63)
     # Bit 0 - Sets the device to report changes in card status
     #
-    P1 = 0x3F
+    #P1 = 0x43
+    P1 = 0x7F
+    #P1 = 0x3F
     # P2 - Monitor card and keyboard status
     # 00 - stop reporting key presses
     # Bit 1 - report function key presses
@@ -1369,8 +1455,11 @@ def processTransaction():
             cardState = EMVCardState(tlv)
 
     # initialize Contactless Reader
-    ctls = initContactless()
-    
+    if ENABLE_EMV_CONTACTLESS:
+      ctls = initContactless()
+    else:
+      ctls = False
+      
     ###ctls = False
     if (cardState != EMV_CARD_INSERTED):
         if (ctls):
@@ -1389,7 +1478,9 @@ def processTransaction():
         attempts = 0
         
         while True:
+        
             status, buf, uns = getAnswer(False) # Get unsolicited ONLY
+            
             if uns:
                 ##log.log('Card reading attempt...')
                 # Check for insertion unsolicited message
@@ -1444,9 +1535,13 @@ def processTransaction():
                     log.log("Keyboard status, keypress ",hex(kbd_tag_val), 'h')
                     continue
                 if tlv.tagCount(0xE3) or tlv.tagCount(0xE5):
-                    log.log("Approved contactless EMV transaction!")
+                    log.log("Completed contactless EMV transaction!")
                     # todo: vsp decrypt!
                     vspDecrypt(tlv, tid)
+                    
+                    # HMAC PAN
+                    displayHMACPAN(tlv)
+                    
                     tranType = 4
                     break
                     
@@ -1461,14 +1556,14 @@ def processTransaction():
                     # decrypt transaction                
                     vspDecrypt(tlv, tid)
 
-                    # encrypted track
-                    displayEncryptedTrack(tlv)
+                    # HMAC PAN
+                    displayHMACPAN(tlv)
                     
                     if cvm_value == 'ONLINE PIN':
                       return OnlinePinTransaction(tlv, tid, cardState, setFirstGenContinueTransaction()) 
  
                     if EMV_ENABLED == 'y':
-                      processCtlsContinue()
+                      continueContactless()
                     else:
                       log.logerr("CONTACTLESS EMV NOT ALLOWED!")
                       
@@ -1491,13 +1586,13 @@ def processTransaction():
                     vspDecrypt(tlv, tid)
                     displayEncryptedTrack(tlv)
                     displayHMACPAN(tlv)
-                    processCtlsContinue()
+                    continueContactless()
                     tranType = 3
                     break
                     
                     
                 if tlv.tagCount(0xE8):
-                  processCtlsContinue()
+                  continueContactless()
                   tranType = 3
                   break;
                 
@@ -1548,12 +1643,30 @@ def processTransaction():
     log.log('*** RESET DISPLAY ***')
     status, buf, uns = getAnswer()
 
+
 # ---------------------------------------------------------------------------- #
 # Main
 # ---------------------------------------------------------------------------- #
 if __name__ == '__main__':
+    
+    # arguments
+    arg = util.get_argparser()
+    
+    arg.add_argument('--action', dest='action', default='sale', 
+                     help='TC Action for transaction')
+    arg.add_argument('--amount', dest='amount', default='100', type=int, 
+                     help='Amount of transaction')
+    arg.add_argument('--amtother', dest='amtother', default='0', type=int, 
+                     help='Amount other')
+    args = util.parse_args()
+
     log = getSyslog()
+
+    log.logwarning('TRANSACTION AMOUNT: $', args.amount)
+    log.log('TRANSACTION AMOUNT OTHER: $', args.amtother)
+    log.log('TOTAL TRANSACTION AMOUNT: $', args.amount + args.amtother)
+        
     conn = connection.Connection()
 
-    utility.register_testharness_script(processTransaction)
+    utility.register_testharness_script(partial(processTransaction, args))
     utility.do_testharness()

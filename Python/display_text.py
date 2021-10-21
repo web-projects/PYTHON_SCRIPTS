@@ -24,7 +24,7 @@ def demo_function():
    status, buf, uns = conn.receive()
    check_status_error( status )
    ''' Send data '''
-   conn.send([0xD2, 0x01, 0x00, 0x01], 'Test tralala' )
+   conn.send([0xD2, 0x01, 0x00, 0x01], '\n\tSignature accepted' )
    status, buf, uns = conn.receive()
    check_status_error( status )
 
@@ -35,14 +35,14 @@ def demo_test_pp1000():
    if req_unsolicited:
          status, buf, uns = conn.receive()
          check_status_error( status )
-#   ''' Reset display '''
+   ''' Reset display '''
    prev_nad = conn.setnad(NAD_PINPAD)
-#   conn.send([0xD2, 0x01, 0x01, 0x00])
-#   status, buf, uns = conn.receive()
-#   check_status_error( status )
+   #conn.send([0xD2, 0x01, 0x01, 0x00])
+   #status, buf, uns = conn.receive()
+   #check_status_error( status )
    ''' Send data '''
    conn.send([0xD2, 0x01, 0x00, 0x01], 'FIRST LINE\x0ASECOND LINE' )
-#   sys.settrace(traceit)
+   #sys.settrace(traceit)
    status, buf, uns = conn.receive()
    check_status_error( status )
    conn.setnad(prev_nad)
@@ -106,8 +106,8 @@ if __name__ == '__main__':
     log = getSyslog()
     
     conn = connection.Connection();
-#    utility.register_testharness_script( demo_function )
-#    utility.register_testharness_script( demo_test_pp1000 )
-    utility.register_testharness_script( demo_test_font_pp1000 )
-#    utility.register_testharness_script( demo_test_multiple_choice_pp1000 )
+    utility.register_testharness_script( demo_function )
+    #utility.register_testharness_script( demo_test_pp1000 )
+    #utility.register_testharness_script( demo_test_font_pp1000 )
+    #utility.register_testharness_script( demo_test_multiple_choice_pp1000 )
     utility.do_testharness()

@@ -213,7 +213,16 @@ import re
 #VERSION_LBL = '1.0.0.35'
 #
 # 1. VISA US COMMON DEBIT SALE+CASHBACK - 1) transaction type included in request, 2) contlemv.cfg - AllowCashback=1
-VERSION_LBL = '1.0.0.36'
+#VERSION_LBL = '1.0.0.36'
+#
+# 1. 9F33 Modification in script is changed to 0x40 for second byte in unattended devices
+#VERSION_LBL = '1.0.0.37'
+#
+# 1. Added action 'void2' to void transactions
+# execute: 
+# TC_transtest_all_autoselect_EMV.py --serial COM25   --custid 1117600 --password ipa1234 --action void --transid 097-0000094712 --transaction_menu n --device_pinpad_capable y --amount 200 --validateAmount n
+VERSION_LBL = '1.0.0.38'
+
 #
 # ----------------------------------------------------------------------------------------------------------
 
@@ -245,6 +254,7 @@ VERSION_LBL = '1.0.0.36'
 # 0x20 - Return / Refund (EMV) - "transaction_type_returns" is used
 # 0x30 - Balance (non-EMV) - "transaction_type_balance_inquiry" is used
 # 0x31 - Reservation (non-EMV) - "transaction_type_reservation" is used
+# 0x40 - Void
 # 0xFE - none (non-EMV) - "transaction_type_" is skipped
 
 TRANSACTION_TYPE = b'\x00'  # SALE TRANSACTION
@@ -254,6 +264,7 @@ TRANSACTION_TYPE = b'\x00'  # SALE TRANSACTION
 ISBLINDREFUND = False
 ISBALANCEINQUIRY = TRANSACTION_TYPE == b'\x30'
 AMOUNTFORINQUIRY = b'\x00\x00\x00\x00\x00\x00'
+ISVOIDTRANSACTION = False
 
 # Transaction Type Dictionary
 TransactionType = {
@@ -1943,6 +1954,28 @@ def promptForSwipeCard():
     status, buf, uns = getAnswer()
 
 
+def TransactionVoid():
+    response = TC_TCLink.processEMVTransaction()
+    ### not getting 'approved'
+    if response == "accepted":
+        sleep(3)
+        count = 1
+        # wait for status=='approved'
+        print('\nWaiting for approval...')
+        while(count <= 5):
+            count = count + 1
+            response = TC_TCLink.getStatusResponse()
+            print('STATUS  :', response)
+            if response == "approved":
+                count = 10
+            else:
+                sleep(1)
+                 
+        if response == "approved":
+            log.log('VOID request approved')
+            TC_TCLink.showTCLinkResponse()
+
+    
 # ---------------------------------------------------------------------------- #
 # Main function
 # ---------------------------------------------------------------------------- #
@@ -1967,6 +2000,9 @@ def processTransaction(args):
     TIME = TC_TransactionHelper.bcd(now.hour % 100) + TC_TransactionHelper.bcd(now.minute) + TC_TransactionHelper.bcd(now.second)
     # print("Amount", str(AMOUNT), "vs", str(b'\x00\x00\x00\x00\x01\x00'))
     # print("Date", str(DATE), "Time", str(TIME))
+
+    if ISVOIDTRANSACTION:
+        return TransactionVoid()
 
     # RESET DEVICE [D0, 00]
     buf = ResetDevice()
@@ -2499,6 +2535,8 @@ if __name__ == '__main__':
                      help='Amount other')
     arg.add_argument('--operator', dest='operator', default=getpass.getuser(), 
                      help='Operator for transaction')
+    arg.add_argument('--transid', dest='transid', default='', 
+                     help='Transaction Identifier') 
     arg.add_argument('--lanenumber', dest='lanenumber', default=None, 
                      help='Lane Number for transaction')
     arg.add_argument('--online', dest='online', default=None, 
@@ -2552,6 +2590,18 @@ if __name__ == '__main__':
         args.action = "verify"
         ISBALANCEINQUIRY = True
         log.log('BALANCE INQUIRY? - TRANSACTION TYPE=' + hexlify(TRANSACTION_TYPE).decode('ascii'))
+
+    # VOID TRANSACTION
+    if args.action == 'void' or args.action == 'void2':
+        transId = TC_TCLink.getTransIdFromFile()
+        if len(transId) == 0:
+            transId = args.transid
+            TC_TCLink.setTransIdFromArgument(transId)
+            if len(transId) == 0:
+                log.logerr('CANNOT ISSUE REFUND: NO TRANSACTION HAS YET BEEN RUN.')
+                exit(0)
+        log.logwarning('VOID TRANSACTION WITH TRANSID:', transId)
+        ISVOIDTRANSACTION = True
 
     # Transaction Amount
     if args.validateAmount == 'y':

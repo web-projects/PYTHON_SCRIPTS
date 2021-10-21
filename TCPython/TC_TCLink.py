@@ -44,6 +44,8 @@ IS_FALLBACK = 'n'
 FALLBACK_TYPE = ''
 ISBALANCEINQUIRY = False
 
+ISVOID = False
+
 # Application based decisons and TAG changes
 FLOOR_LIMIT_EXCEEDED = False
 CVM_LIMIT_EXCEEDED = False
@@ -352,7 +354,7 @@ def saveEMVData(tlv, template, isBlindRefund = False):
                 # dynamic handling for MasterCard Contactless above CVM limit
                 if CVM_LIMIT_EXCEEDED:
                     cvm_value = tag[1]
-                    cvm_value[1] = 0x60
+                    cvm_value[1] = 0x40 if DEVICE_UNATTENDED else 0x60
                     tag[1] = cvm_value
                 elif CVM_ISBELOW_LIMIT:
                     cvm_value = tag[1]
@@ -465,10 +467,12 @@ def printEMVHexTags():
 
 
 def SetProperties(args, log, hasCashback = False):
-    global LOG_INTERNAL_DATA, LOG, DEVICE_PINPAD_CAPABLE, PARTIAL_AUTH, ISBALANCEINQUIRY
-
+    global LOG_INTERNAL_DATA, LOG, DEVICE_PINPAD_CAPABLE, PARTIAL_AUTH, ISBALANCEINQUIRY, ISVOID
+    
     if args.action == 'verify':
         ISBALANCEINQUIRY = True
+    elif args.action == 'void' or args.action == 'void2':
+        ISVOID = True
     else:
         PARTIAL_AUTH = str(args.partialauth)
 
@@ -527,6 +531,11 @@ def getTransIdFromFile():
     return TRANSACTION_ID
 
 
+def setTransIdFromArgument(transId):
+    global TRANSACTION_ID
+    TRANSACTION_ID = transId
+    
+
 def getErrorType():
     return ERROR_TYPE
 
@@ -535,6 +544,20 @@ def getResponseCode():
     return RESPONSE_CODE
 
 
+def getStatusResponse():
+    status = 'unknown'
+    try:
+        status = tclink.GetResponse("status")
+    except:
+        pass
+    #print("Status  :", status)
+    return status
+
+
+def resetTCLinkConnection():
+    tclink = win32com.client.Dispatch("TCLinkCOM.TClink")
+
+    
 def showTCLinkResponse():
     global ERROR_TYPE, RESPONSE_CODE
     status = 'unknown'
@@ -545,20 +568,22 @@ def showTCLinkResponse():
         RESPONSE_CODE = tclink.GetResponse("responsecode")
     except:
         pass
-    print("Status:", status)
+    print("\nStatus  :", status)
 
     try:
         transId = tclink.GetResponse("transid")
-        print("TransID:", transId)
+        print("TransID :", transId)
         saveTransIdToFile(transId)
     except:
         pass
     try:
-        print("AuthCode:", tclink.GetResponse("authcode"))
+        authCode = tclink.GetResponse("authcode")
+        if len(authCode):
+            print("AuthCode:", authCode)
     except:
         pass
     try:
-        print("TSI:", EMV_TAGS['emv_9b_transactionstatusinformation'])
+        print("TSI     :", EMV_TAGS['emv_9b_transactionstatusinformation'])
     except:
         pass
     return status
@@ -570,13 +595,17 @@ def getDeclineType():
         declinetype = tclink.GetResponse("declinetype")
     except:
         pass
-    print("DECLINE-TYPE:", declinetype)
+    if len(declinetype):
+        print("DECLINE-TYPE:", declinetype)
     return declinetype
 
 
 def addEMVTagData(isBlindRefund):
-    global EMV_TAGS, POS_ENTRY_MODE, EMV_PROCESSING_CODE, DEVICE_PINPAD_CAPABLE, PARTIAL_AUTH, ISBALANCEINQUIRY
+    global EMV_TAGS, POS_ENTRY_MODE, EMV_PROCESSING_CODE, DEVICE_PINPAD_CAPABLE, PARTIAL_AUTH, ISBALANCEINQUIRY, ISVOID
 
+    if ISVOID == True:
+        return
+    
     # override section
     #aid = EMV_TAGS.get("emv_4f_applicationidentifiericc")
     datestr = str(datetime.today().year)[
@@ -603,7 +632,7 @@ def addEMVTagData(isBlindRefund):
 
     if ISBALANCEINQUIRY == False and isBlindRefund == False:
         OVERRIDE_TAGS["partialauth"] = PARTIAL_AUTH
-
+      
     print("Override tags used:")
     for tag, data in OVERRIDE_TAGS.items():
         if tag != "":
@@ -622,7 +651,7 @@ def addEMVTagData(isBlindRefund):
     if len(POS_ENTRY_MODE) > 0:
         tclink.PushNameValue(POS_ENTRY_MODE)
     if len(EMV_TAGS) > 0:
-        if ISBALANCEINQUIRY == False:
+        if ISBALANCEINQUIRY == False and ISVOID == False:
             tclink.PushNameValue("quickchip=y")
         if len(EMV_PROCESSING_CODE):
             tclink.PushNameValue("emv_processingcode=" + EMV_PROCESSING_CODE)
@@ -634,14 +663,14 @@ def addEMVTagData(isBlindRefund):
 def processMSRTransaction(encryptedPIN, ksn, iscredit, isBlindRefund):
     global DEVICE_SERIAL, DEVICE_UNATTENDED, ENCRYPTED_TRACK_IV, ENCRYPTED_TRACK_KSN, ENCRYPTED_TRACK_DATA
     global IS_FALLBACK, FALLBACK_TYPE, MSR_TRACK2_DATA, MSR_EXPIRY_DATA, PARTIAL_AUTH
-    global TRANSACTION_ID
+    global TRANSACTION_ID, ISVOID
  
     print(">>> processMSRTransaction iv", ENCRYPTED_TRACK_IV)
     # NOTE: John L. noted we should not send 'emv_processingcode=credit' for fallback
     tclink.PushNameValue("emv_device_capable=y")
 
     # credit transaction does not include encryptedtrack or pin
-    if iscredit == True:
+    if iscredit == True or ISVOID == True:
         tclink.PushNameValue("transid="+TRANSACTION_ID)
     else:    
         tclink.PushNameValue("encryptedtrack="+"TVP|iv:"+ENCRYPTED_TRACK_IV +
@@ -656,7 +685,9 @@ def processMSRTransaction(encryptedPIN, ksn, iscredit, isBlindRefund):
                 
     tclink.PushNameValue("aggregators=1")
     tclink.PushNameValue("aggregator1=L9XPR6")
-    tclink.PushNameValue("device_serial="+DEVICE_SERIAL)
+    
+    if ISVOID == False:
+        tclink.PushNameValue("device_serial="+DEVICE_SERIAL)
 	
     if IS_FALLBACK == 'y':
         tclink.PushNameValue("emv_fallback=y")
@@ -697,25 +728,37 @@ def processCLessMagstripeTransaction():
 
 def processEMVTransaction(isBlindRefund = False):
     global DEVICE_SERIAL, DEVICE_UNATTENDED, ENCRYPTED_TRACK_IV, ENCRYPTED_TRACK_KSN, ENCRYPTED_TRACK_DATA, EMV_TAGS
-    global TRANSACTION_ID
+    global TRANSACTION_ID, ISVOID
     
     #print(">>> processEMVTransaction iv", ENCRYPTED_TRACK_IV)
     # tclink.PushNameValue("_transid_override=100-1000010001")
-    tclink.PushNameValue("emv_device_capable=y")
-    tclink.PushNameValue("encryptedtrack="+"TVP|iv:"+ENCRYPTED_TRACK_IV +
-                         "|ksn:"+ENCRYPTED_TRACK_KSN+"|vipa:"+ENCRYPTED_TRACK_DATA)
+    
+    if ISVOID == True:
+        tclink.PushNameValue("transid="+TRANSACTION_ID)
+    else:
+        tclink.PushNameValue("emv_device_capable=y")
+        tclink.PushNameValue("encryptedtrack="+"TVP|iv:"+ENCRYPTED_TRACK_IV +
+                             "|ksn:"+ENCRYPTED_TRACK_KSN+"|vipa:"+ENCRYPTED_TRACK_DATA)
     tclink.PushNameValue("aggregators=1")
     tclink.PushNameValue("aggregator1=L9XPR6")
-    tclink.PushNameValue("device_serial="+DEVICE_SERIAL)
+    
+    if ISVOID == False:
+        tclink.PushNameValue("device_serial="+DEVICE_SERIAL)
+    
     if isBlindRefund == True:
         tclink.PushNameValue("reftransid="+TRANSACTION_ID)
-    else:
+    elif ISVOID == False:
         tclink.PushNameValue("unattended="+DEVICE_UNATTENDED)
     print(">> EMV: len(EMV_TAGS)", str(len(EMV_TAGS)))
     addEMVTagData(isBlindRefund)
+    
     # print("encryptedtrack="+"TVP|iv:"+ENCRYPTED_TRACK_IV+"|ksn:"+ENCRYPTED_TRACK_KSN+"|vipa:"+ENCRYPTED_TRACK_DATA)
     #Sprint(">> EMV_TAGS", str(EMV_TAGS))
     tclink.Submit()
+    
+    if ISVOID == True:
+        sleep(5)
+        
     return showTCLinkResponse()
 
 
