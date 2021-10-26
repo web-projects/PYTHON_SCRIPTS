@@ -18,6 +18,7 @@ import getpass
 import datetime
 import traceback
 import testharness.utility as util
+import TC_TransactionHelper
 
 # MiFare - inner tag processing
 from testharness.tlvparser import TLVPrepare
@@ -597,8 +598,8 @@ def OnlinePinInTemplateE6(tlv, cardState, continue_tpl):
             OnlineEncryptedPIN = encryptedPINData
             OnlinePinKSN = ksn
             
-            log.logwarning("E6 Template - Encrypted PIN/KSN", OnlineEncryptedPIN, OnlinePinKSN)
-            log.logwarning("HOST_ID =", HOST_ID, "<==> KEYSET_ID =", KEYSET_ID)
+            log.warning("E6 Template - Encrypted PIN/KSN", OnlineEncryptedPIN, OnlinePinKSN)
+            log.warning("HOST_ID =", HOST_ID, "<==> KEYSET_ID =", KEYSET_ID)
             #displayMsg('Processing ...')
             #response = 'Approved'
             #TC_TCLink.saveEMVData(tlv,0xE4)
@@ -1124,7 +1125,7 @@ def displayEncryptedTrack(tlv):
   if tlv.tagCount((0x5F, 0x20)):
     cardholderName = tlv.getTag((0x5F, 0x20))[0]
     if len(cardholderName):
-      log.logwarning('CARDHOLDER NAME: \"' + str(cardholderName, 'iso8859-1') + '\"')
+      log.warning('CARDHOLDER NAME: \"' + str(cardholderName, 'iso8859-1') + '\"')
 
   sRED = tlv.getTag((0xFF, 0x7F), TLVParser.CONVERT_HEX_STR)[0].upper()
   if len(sRED):
@@ -1187,11 +1188,11 @@ def displayHMACPAN(tlv):
       dataLen = int(sRED[panIndex+6:panIndex+8], 16) * 2
       panData = sRED[panIndex+8:panIndex+8+dataLen]
       if len(panData):
-        log.logwarning("HMAC PAN TOKEN:", panData)
+        log.warning("HMAC PAN TOKEN:", panData)
     else:
-      log.logwarning("HMAC PAN TOKEN: TAG NOT FOUND")
+      log.warning("HMAC PAN TOKEN: TAG NOT FOUND")
   else:
-    log.logwarning("HMAC PAN TOKEN: NOT REPORTED")
+    log.warning("HMAC PAN TOKEN: NOT REPORTED")
 
 
 # ---------------------------------------------------------------------------- #
@@ -1237,17 +1238,18 @@ def startContactless(preferredAID=''):
 
     # Start Contactless transaction
     start_ctls_tag = [
-        [(0x9C), TRANSACTION_TYPE],   # transaction type
-        [(0x9F, 0x02), AMOUNT],       # amount
-        [(0x9F, 0x03), AMTOTHER],     # cashback
-        [(0x9A), DATE],               # system date
-        [(0x9F,0x21), TIME],          # system time
-        #[(0x9F,0x41), b'\x00\x01'],   # sequence counter
-        #[(0xDF,0xA2,0x04), b'\x01'],  # Application selection using PINPad
+        [(0x9C), TRANSACTION_TYPE],     # transaction type
+        [(0x9F, 0x02), AMOUNT],         # amount
+        [(0x9F, 0x03), AMTOTHER],       # cashback
+        [(0x9A), DATE],                 # system date
+        [(0x9F,0x21), TIME],            # system time
+        #[(0x9F,0x41), b'\x00\x01'],    # sequence counter
+        #[(0xDF,0xA2,0x04), b'\x01'],   # Application selection using PINPad
+        #[(0xDF, 0xDF, 0x0D), b'\x01'], # Force transaction online
+        CURRENCY_CODE,                  # currency code
+        COUNTRY_CODE,                   # country code
         #AUTHRESPONSECODE,
-        #[(0xDF, 0xDF, 0x0D), b'\x02'],# Don't force transaction online
-        CURRENCY_CODE,                # currency code
-        COUNTRY_CODE                  # country code
+        #QUICKCHIP_ENABLED
     ]
     # Sale / Purchase with cashback not allowed here
     if TRANSACTION_TYPE != b'\x09':
@@ -1367,6 +1369,26 @@ def promptForCard():
     status, buf, uns = getAnswer()
 
 
+def checkTVRStatus(tlv):
+    tvr = tlv.getTag((0x95))
+    if len(tvr):
+      print('')
+      log.attention('TVR:', hexlify(tvr[0]))
+      index = 1
+      for x in tvr[0]:
+        # change x to X for upper: "0x%0*X"
+        log.log('BYTE[' + str(index) + ']: ' + "0x%0*x" % (2, x))
+        #log.log('BYTE[' + str(index) + ']: ' + "{0:#0{1}x}".format(x, 4))
+        #log.log('BINARY :', bin(x).replace("0b", ""))
+        for n in range(8, -1, -1):
+          bit = (x & (1 << n)) >> n
+          if bit == 1:
+            #log.log('   BIT :', n + 1)
+            TC_TransactionHelper.showTVRFailures(log, index, n + 1)
+        index = index + 1
+      print('')
+
+
 # ---------------------------------------------------------------------------- #
 # Main function
 # ---------------------------------------------------------------------------- #
@@ -1377,6 +1399,7 @@ def processTransaction(args):
     # TIMESTAMP
     now = datetime.datetime.now()
     DATE = bcd(now.year % 100) + bcd(now.month) + bcd(now.day)
+    #DATE = b'\x19\x01\x01'
     TIME = bcd(now.hour % 100) + bcd(now.minute) + bcd(now.second)
     
     if args.amount != 0:
@@ -1615,6 +1638,9 @@ def processTransaction(args):
         result = processEMV(tid)
         tranType = 1
 
+    # TVR status
+    checkTVRStatus(tlv)
+
     # After loop
     if tranType == 1:
         # If card still inserted, ask for removal
@@ -1662,7 +1688,7 @@ if __name__ == '__main__':
 
     log = getSyslog()
 
-    log.logwarning('TRANSACTION AMOUNT: $', args.amount)
+    log.warning('TRANSACTION AMOUNT: $', args.amount)
     log.log('TRANSACTION AMOUNT OTHER: $', args.amtother)
     log.log('TOTAL TRANSACTION AMOUNT: $', args.amount + args.amtother)
         

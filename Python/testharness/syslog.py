@@ -12,7 +12,7 @@ import xml.etree.ElementTree as etree
 class syslog(object):
     
     ''' Log levels '''
-    LOGLEVEL_ERROR      = 0x01    
+    LOGLEVEL_ERROR      = 0x01
     LOGLEVEL_USER       = 0x02
     LOGLEVEL_SYSTEM     = 0x04
     LOGLEVEL_PARSE      = 0x08
@@ -20,6 +20,7 @@ class syslog(object):
     LOGLEVEL_PACKET     = 0x20
     LOGLEVEL_INFO       = 0x40
     LOGLEVEL_WARNING    = 0x80
+    LOGLEVEL_ATTENTION  = 0xC0
     __LOGLEVEL_DATA_LOG = LOGLEVEL_PARSE | LOGLEVEL_DATA | LOGLEVEL_PACKET
     
     ''' Output directory '''
@@ -44,6 +45,8 @@ class syslog(object):
                 print(Back.GREEN + msg[1][1][:-3]+ '> ' + msg[3][1] )
             elif msg[2][1]=='warning':
                 print(Back.BLUE + msg[1][1][:-3]+ '> ' + msg[3][1] )  
+            elif msg[2][1]=='attention':
+                print(Back.YELLOW + msg[1][1][:-3]+ '> ' + msg[3][1] )
             else:
                 print(msg[1][1][:-3]+'>', msg[3][1])
         #Structural message parsing
@@ -114,18 +117,19 @@ class syslog(object):
     
     ''' Log level descriptor '''
     __LOGLEVEL_DESC = {
-        LOGLEVEL_ERROR  : "error",
-        LOGLEVEL_USER   : "user",
-        LOGLEVEL_SYSTEM : "system",
-        LOGLEVEL_PARSE  : "parse",
-        LOGLEVEL_DATA   : "data",
-        LOGLEVEL_PACKET : "packet",
-        LOGLEVEL_INFO   : "info",
-        LOGLEVEL_WARNING: "warning",
+        LOGLEVEL_ERROR    : "error",
+        LOGLEVEL_USER     : "user",
+        LOGLEVEL_SYSTEM   : "system",
+        LOGLEVEL_PARSE    : "parse",
+        LOGLEVEL_DATA     : "data",
+        LOGLEVEL_PACKET   : "packet",
+        LOGLEVEL_INFO     : "info",
+        LOGLEVEL_WARNING  : "warning",
+        LOGLEVEL_ATTENTION: "attention",
     }
     ''' Application loglevel mask '''
-    __loglevel_mask =  LOGLEVEL_ERROR | LOGLEVEL_USER | LOGLEVEL_PARSE | LOGLEVEL_DATA | LOGLEVEL_SYSTEM | LOGLEVEL_INFO | LOGLEVEL_WARNING
-    
+    __loglevel_mask =  LOGLEVEL_ERROR | LOGLEVEL_USER | LOGLEVEL_PARSE | LOGLEVEL_DATA | LOGLEVEL_SYSTEM | LOGLEVEL_INFO | LOGLEVEL_WARNING | LOGLEVEL_ATTENTION
+
     ''' Output handler '''
     __log_handler = [ __console_output, __xml_output ]
     
@@ -190,9 +194,13 @@ class syslog(object):
     ''' Log '''
     def logerr(self, *args):
         self.log_level(self.LOGLEVEL_ERROR, *args)
+
+    ''' Log '''
+    def attention(self, *args):
+        self.log_level(self.LOGLEVEL_ATTENTION, *args)
         
     ''' Log '''
-    def logwarning(self, *args):
+    def warning(self, *args):
         self.log_level(self.LOGLEVEL_WARNING, *args)
 
     def loginfo(self, *args):
