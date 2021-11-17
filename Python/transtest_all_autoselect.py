@@ -30,6 +30,10 @@ import pyperclip
 # GLOBALS
 # ---------------------------------------------------------------------------- #
 
+# 20211108
+# 1. Added TVR status reporting
+VERSION_LBL = '1.0.0.1'
+
 # TRANSACTION TYPE (TAG 9C)
 # 0x00 - Sale / Purchase (EMV) - "transaction_type_goods" is used
 # 0x01 - Cash Advance (EMV) - "transaction_type_cash" is used
@@ -44,9 +48,6 @@ TRANSACTION_TYPE = b'\x00' # SALE TRANSACTION
 #TRANSACTION_TYPE = b'\x30' # BALANCE INQUIRY - MTIP06_10_01_15A, MTIP06_12_01_15A
 ISBALANCEINQUIRY = TRANSACTION_TYPE == b'\x30'
 AMOUNTFORINQUIRY = b'\x00\x00\x00\x00\x00\x00'
-
-# VAS REPORTING: VIPA 6.8.2.17+
-ENABLE_VAS_REPORTING = False
 
 # EMV DISABLEMENT
 EMV_ENABLED = 'y'
@@ -136,6 +137,13 @@ EMV_VERIFICATION = 0
 
 # CONTACTLESS CARD WORKFLOWS
 ENABLE_EMV_CONTACTLESS = True
+
+# VIPA VERSION_LBL
+VIPA_VAS_VER = '6.8.2.17'
+VIPA_VERSION = '6.8.2.11'
+
+# VAS REPORTING: VIPA 6.8.2.17+
+ENABLE_VAS_REPORTING = False
 
 
 # ---------------------------------------------------------------------------- #
@@ -1232,7 +1240,7 @@ def initContactless():
 
 # Start Contactless Transaction
 def startContactless(preferredAID=''):
-    global AMOUNT, AMTOTHER, DATE, TIME
+    global AMOUNT, AMTOTHER, DATE, TIME, ENABLE_VAS_REPORTING
     
     vas = "{\"Preload_Configuration\":{\"Configuration_version\":\"1.0\",\"Terminal\":{\"Terminal_Capabilities\":{\"Capabilities\":\"Payment|VAS\"},\"PollTech\":\"AB\",\"PollTime\":15000,\"Source_List\":[{\"Source\":\"ApplePay\"},{\"Source\":\"AndroidPay\"}]}}}"
 
@@ -1263,8 +1271,8 @@ def startContactless(preferredAID=''):
         start_ctls_tag.append([(0x9F, 0x06), b'\x00\x01'])
     
     # VAS Transactions VIPA 6.8.2.17+
-    if ENABLE_VAS_REPORTING:
-      start_ctls_tag.append([(0xDF, 0xB5, 0x01), vas.encode()])
+    #if ENABLE_VAS_REPORTING:
+    #  start_ctls_tag.append([(0xDF, 0xB5, 0x01), vas.encode()])
     
     start_ctls_templ = (0xE0, start_ctls_tag)
 
@@ -1286,7 +1294,8 @@ def startContactless(preferredAID=''):
     #     * this feature is used primarily for SCA
     #     Bit 7 (0x80)
     #     stop on MIFARE command processing errors (only valid when bit 1 is set)
-    P1 = 0x02 if ENABLE_MiFARE else 0x01
+    #P1 = 0x03 if ENABLE_MiFARE else 0x01
+    P1 = 0x21 if ENABLE_VAS_REPORTING else 0x01
     conn.send([0xC0, 0xA0, P1, 0x00], start_ctls_templ)
 
     log.log('Starting Contactless transaction')
@@ -1313,7 +1322,7 @@ def continueContactless():
         # • 01 – Approved
         # • 02 – Failed to connect
         #CONTINUE_REQUEST_AAC,                           # Host Decision: 00 = Declined
-        #CONTINUE_REQUEST_TC,                            # Host Decision: 01 = Approved
+        CONTINUE_REQUEST_TC,                            # Host Decision: 01 = Approved
         AUTHRESPONSECODE
     ]
     
@@ -1373,7 +1382,7 @@ def checkTVRStatus(tlv):
     tvr = tlv.getTag((0x95))
     if len(tvr):
       print('')
-      log.attention('TVR:', hexlify(tvr[0]))
+      log.attention('TVR (TAG 95):', hexlify(tvr[0]))
       index = 1
       for x in tvr[0]:
         # change x to X for upper: "0x%0*X"
@@ -1389,12 +1398,26 @@ def checkTVRStatus(tlv):
       print('')
 
 
+def vipaVersion(tlv):
+  vipa = tlv.getTag((0xDF, 0x81, 0x06))
+  if len(vipa):
+    index = 0
+    for iversion in vipa:
+      vipaLbl = str(iversion, 'iso8859-1')
+      if len(vipaLbl) and vipaLbl == 'VIPA':
+        vipaVer = tlv.getTag((0xDF, 0x81, 0x07))
+        VIPA_VERSION = str(vipaVer[index], 'iso8859-1')
+        return VIPA_VERSION
+      index = index + 1
+  return 'UNKNOWN'
+
+
 # ---------------------------------------------------------------------------- #
 # Main function
 # ---------------------------------------------------------------------------- #
 def processTransaction(args):
 
-    global DATE, TIME, EMV_ENABLED, AMOUNT
+    global DATE, TIME, EMV_ENABLED, AMOUNT, VIPA_VERSION, VIPA_VAS_VER, ENABLE_VAS_REPORTING
     
     # TIMESTAMP
     now = datetime.datetime.now()
@@ -1418,7 +1441,15 @@ def processTransaction(args):
     # Send reset device
     buf = ResetDevice()
     
+    # Template EE [OS Version]
     tlv = TLVParser(buf)
+   
+    VIPA_VERSION = vipaVersion(tlv)
+    log.warning('VIPA VERSION: ', VIPA_VERSION)
+    if VIPA_VERSION > VIPA_VAS_VER:
+      ENABLE_VAS_REPORTING = True
+    log.log('VAS ENABLED : ', ENABLE_VAS_REPORTING)
+ 
     tid = tlv.getTag((0x9F, 0x1E))
     if len(tid): 
         tid = str(tid[0], 'iso8859-1')
@@ -1426,7 +1457,7 @@ def processTransaction(args):
     else: 
         tid = ''
         log.logerr('Invalid TID (or cannot determine TID)!')
-
+      
     #Send clear display
     conn.send([0xD2, 0x01, 0x01, 0x01])
     status, buf, uns = getAnswer()
@@ -1687,6 +1718,8 @@ if __name__ == '__main__':
     args = util.parse_args()
 
     log = getSyslog()
+
+    log.logerr("TESTHARNESS v" + VERSION_LBL)
 
     log.warning('TRANSACTION AMOUNT: $', args.amount)
     log.log('TRANSACTION AMOUNT OTHER: $', args.amtother)
