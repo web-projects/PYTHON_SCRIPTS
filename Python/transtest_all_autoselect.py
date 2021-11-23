@@ -1135,55 +1135,59 @@ def displayEncryptedTrack(tlv):
     if len(cardholderName):
       log.warning('CARDHOLDER NAME: \"' + str(cardholderName, 'iso8859-1') + '\"')
 
-  sRED = tlv.getTag((0xFF, 0x7F), TLVParser.CONVERT_HEX_STR)[0].upper()
-  if len(sRED):
-    log.log("SRED DATA: " + sRED)
-    
-    ksn  = ''
-    iv   = ''
-    vipa = ''
-    
-    # TAG DFDF11
-    ksnIndex = sRED.find('DFDF11')
-    if ksnIndex != -1:
-      dataLen = int(sRED[ksnIndex+6:ksnIndex+8], 16) * 2
-      ksn = sRED[ksnIndex+8:ksnIndex+8+dataLen]
-      if len(ksn):
-        log.log('KSN: ' + ksn)
-    
-    # TAG DFDF12
-    ivIndex = sRED.find('DFDF12')
-    if ivIndex != -1:
-      dataLen = int(sRED[ivIndex+6:ivIndex+8], 16) * 2
-      iv = sRED[ivIndex+8:ivIndex+8+dataLen]
-      if len(iv):
-        log.log('IV: ' + iv)
-    
-    # TAG DFDF10
-    encryptedTrackIndex = sRED.find('DFDF10')
-    if encryptedTrackIndex != -1:
-      #log.log("IDX=" + sRED[encryptedTrackIndex+6:encryptedTrackIndex+8])
-      #temp = sRED[encryptedTrackIndex+6:encryptedTrackIndex+8]
-      #log.log("LENGTH=" + temp)
-      dataLen = int(sRED[encryptedTrackIndex+6:encryptedTrackIndex+8], 16) * 2
-      encryptedData = sRED[encryptedTrackIndex+8:encryptedTrackIndex+8+dataLen]
-      if len(encryptedData):
-        vipa = encryptedData
-        log.logerr("ENCRYPTED TRACK LENGTH=" + str(dataLen))
-        log.log('DATA: ' + encryptedData)
-        
-      # TVP|ksn:|iv:|vipa:|
-      if len(ksn) and len(iv) and len(vipa):
-        tclinkStr = 'TVP|ksn:' + ksn + '|iv:' + iv + '|vipa:' + vipa 
-        log.logerr(tclinkStr)
-        pyperclip.copy(tclinkStr)
-        
-      encryptionStatusIndex = sRED.find('DFDB0F')
-      if encryptionStatusIndex != -1:
-        dataLen = int(sRED[encryptionStatusIndex+6:encryptionStatusIndex+8], 16) * 2
-        encryptionStatus = sRED[encryptionStatusIndex+8:encryptionStatusIndex+8+dataLen]
-        if len(encryptionStatus):
-          log.log("ENCRYTION STATUS: " + encryptionStatus)
+  if tlv.tagCount((0xFF, 0x7F)):
+    sRED = tlv.getTag((0xFF, 0x7F), TLVParser.CONVERT_HEX_STR)
+    for i in sRED:
+      log.log(i)
+    sRED = tlv.getTag((0xFF, 0x7F), TLVParser.CONVERT_HEX_STR)[0].upper()
+    if len(sRED):
+      log.log("SRED DATA: ", sRED)
+      
+      ksn  = ''
+      iv   = ''
+      vipa = ''
+      
+      # TAG DFDF11
+      ksnIndex = sRED.find('DFDF11')
+      if ksnIndex != -1:
+        dataLen = int(sRED[ksnIndex+6:ksnIndex+8], 16) * 2
+        ksn = sRED[ksnIndex+8:ksnIndex+8+dataLen]
+        if len(ksn):
+          log.log('KSN: ' + ksn)
+      
+      # TAG DFDF12
+      ivIndex = sRED.find('DFDF12')
+      if ivIndex != -1:
+        dataLen = int(sRED[ivIndex+6:ivIndex+8], 16) * 2
+        iv = sRED[ivIndex+8:ivIndex+8+dataLen]
+        if len(iv):
+          log.log('IV: ' + iv)
+      
+      # TAG DFDF10
+      encryptedTrackIndex = sRED.find('DFDF10')
+      if encryptedTrackIndex != -1:
+        #log.log("IDX=" + sRED[encryptedTrackIndex+6:encryptedTrackIndex+8])
+        #temp = sRED[encryptedTrackIndex+6:encryptedTrackIndex+8]
+        #log.log("LENGTH=" + temp)
+        dataLen = int(sRED[encryptedTrackIndex+6:encryptedTrackIndex+8], 16) * 2
+        encryptedData = sRED[encryptedTrackIndex+8:encryptedTrackIndex+8+dataLen]
+        if len(encryptedData):
+          vipa = encryptedData
+          log.logerr("ENCRYPTED TRACK LENGTH=" + str(dataLen))
+          log.log('DATA: ' + encryptedData)
+          
+        # TVP|ksn:|iv:|vipa:|
+        if len(ksn) and len(iv) and len(vipa):
+          tclinkStr = 'TVP|ksn:' + ksn + '|iv:' + iv + '|vipa:' + vipa 
+          log.logerr(tclinkStr)
+          pyperclip.copy(tclinkStr)
+          
+        encryptionStatusIndex = sRED.find('DFDB0F')
+        if encryptionStatusIndex != -1:
+          dataLen = int(sRED[encryptionStatusIndex+6:encryptionStatusIndex+8], 16) * 2
+          encryptionStatus = sRED[encryptionStatusIndex+8:encryptionStatusIndex+8+dataLen]
+          if len(encryptionStatus):
+            log.log("ENCRYTION STATUS: " + encryptionStatus)
 
 
 def displayHMACPAN(tlv):
@@ -1242,7 +1246,8 @@ def initContactless():
 def startContactless(preferredAID=''):
     global AMOUNT, AMTOTHER, DATE, TIME, ENABLE_VAS_REPORTING
     
-    vas = "{\"Preload_Configuration\":{\"Configuration_version\":\"1.0\",\"Terminal\":{\"Terminal_Capabilities\":{\"Capabilities\":\"Payment|VAS\"},\"PollTech\":\"AB\",\"PollTime\":15000,\"Source_List\":[{\"Source\":\"ApplePay\"},{\"Source\":\"AndroidPay\"}]}}}"
+    #vas = "{\"Preload_Configuration\":{\"Configuration_version\":\"1.0\",\"Terminal\":{\"Terminal_Capabilities\":{\"Capabilities\":\"Payment|VAS\"},\"PollTech\":\"AB\",\"PollTime\":15000,\"Source_List\":[{\"Source\":\"ApplePay\"},{\"Source\":\"AndroidPay\"}]}}}"
+    vas = '{"Preload_Configuration":{"Configuration_version":"1.0","Terminal":{"Terminal_Capabilities":{"Capabilities":"Payment|VAS"},"PollTech":"AB","PollTime":15000,"Source_List":[{"Source":"ApplePay"},{"Source":"AndroidPay"}]}}}'
 
     # Start Contactless transaction
     start_ctls_tag = [
@@ -1271,8 +1276,8 @@ def startContactless(preferredAID=''):
         start_ctls_tag.append([(0x9F, 0x06), b'\x00\x01'])
     
     # VAS Transactions VIPA 6.8.2.17+
-    #if ENABLE_VAS_REPORTING:
-    #  start_ctls_tag.append([(0xDF, 0xB5, 0x01), vas.encode()])
+    if ENABLE_VAS_REPORTING:
+      start_ctls_tag.append([(0xDF, 0xB5, 0x01), vas.encode()])
     
     start_ctls_templ = (0xE0, start_ctls_tag)
 
@@ -1446,7 +1451,7 @@ def processTransaction(args):
    
     VIPA_VERSION = vipaVersion(tlv)
     log.warning('VIPA VERSION: ', VIPA_VERSION)
-    if VIPA_VERSION > VIPA_VAS_VER:
+    if VIPA_VERSION >= VIPA_VAS_VER:
       ENABLE_VAS_REPORTING = True
     log.log('VAS ENABLED : ', ENABLE_VAS_REPORTING)
  
@@ -1661,6 +1666,20 @@ def processTransaction(args):
                             # No need to exit the loop - ctls is not active now, but we have to disable swipes
                             ignoreSwipe = True
                             continue
+                            
+                # Power on event
+                if tlv.tagCount(0xE6):
+                  log.warning('POWER ON EVENT')
+                  continue
+                  
+                # VAS Payload
+                if tlv.tagCount(0x6F):
+                  log.warning('VAS PAYLOAD')
+                  continueContactless()
+                  tranType = 3
+                  break
+                  
+            # cannot decide how to proceed with response
             log.logerr("Invalid packet detected, ignoring it!")
             print('E4: ', tlv.tagCount(0xE4))
             print(tlv)
@@ -1668,6 +1687,9 @@ def processTransaction(args):
         log.log("Card already inserted!")
         result = processEMV(tid)
         tranType = 1
+
+    # CardSource
+    TC_TransactionHelper.reportCardSource(tlv, log)
 
     # TVR status
     checkTVRStatus(tlv)

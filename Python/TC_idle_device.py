@@ -2,7 +2,7 @@
 '''
 Created on 21-06-2012
 
-@authors: Lucjan_B1, Kamil_P1
+@authors: Jon Bianco
 '''
 
 from testharness import *

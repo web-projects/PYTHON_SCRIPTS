@@ -7,6 +7,8 @@ Created on 03-12-2020
 
 from testharness import *
 from testharness.syslog import getSyslog
+from binascii import hexlify, unhexlify, b2a_hex
+from testharness.tlvparser import TLVParser
 
 
 def showTVRFailures(log, index, bit):
@@ -111,4 +113,40 @@ def showTVRByte5Failures(log, bit):
     
     log.logerr('         [' + tvr_value + ']')
     
- 
+def reportCardSource(tlv, log):
+  if tlv.tagCount((0x9F, 0x39)):
+    entryMode = tlv.getTag((0x9F, 0x39))
+    if len(entryMode):
+       entryMode = ord(entryMode[0])
+       #log.logerr('MODE=', entryMode)
+       switcher = {
+             91: "CLESS-MSR",
+             90: "MSR",
+              8: "Amex Wallet",
+              7: "Contactless-ICR",
+              5: "Contact-ICR",
+              4: "OCR",
+              3: "Barcode",
+              1: "Manual",
+              0: "Unspecified"
+          }
+       entryMode_value = switcher.get(entryMode, "UNKNOWN ENTRY MODE")
+       print('')
+       log.warning('ENTRY MODE:', entryMode_value)
+       if entryMode == 7:
+        if tlv.tagCount((0xC6)):
+          vasTag = tlv.getTag((0xC6), TLVParser.CONVERT_HEX_STR)[0].upper()
+          #log.log('VAS TAG:', vasTag)
+          vasIdIndex = vasTag.find('DFC601')
+          if vasIdIndex != -1:
+            dataLen = int(vasTag[vasIdIndex+6:vasIdIndex+8], 16) * 2
+            vasId = vasTag[vasIdIndex+8:vasIdIndex+8+dataLen]
+            # vasId = NULL
+            if len(vasId) == 8 and vasId == '6E756C6C':
+              log.log('CARDSOURCE: CARD')
+            else:
+              log.log('CARDSOURCE: APP')
+        else:
+          log.warning('CARSOURECE: CARD')
+  else:
+    log.warning('ENTRY MODE: UNKNOWN')

@@ -148,6 +148,16 @@ def GetSecurityConfiguration():
     else:
         log.logerr("NO ADE KEY REPORTED")
         
+
+    # ADE IV
+    ksn_ade_iv = ''
+    tag_initvector_data =  (0xDF, 0xDF, 0x12)
+    if (tlv.tagCount(tag_initvector_data)):
+      initvector_val = tlv.getTag(tag_initvector_data)[0]
+      ksn_ade_iv = hexlify(initvector_val).decode('utf-8').upper()
+    else:
+      log.logerr("ADE SRED IV : MISSING")
+    
     # ONLINE PIN DEBIT KEY
     tlv = GetKeyConfiguration(PIN_HOST_ID, PIN_KEYSET_ID)
     
@@ -162,8 +172,7 @@ def GetSecurityConfiguration():
     log.warning("ADE HOST ID_:", str(ade_host_id))
     log.warning("KEYSET ID __:", str(ade_keyset_id))
     log.logerr    ("ADE SRED KSN:", ksn_ade_slot)
-    log.warning("PIN HOST ID :", str(PIN_HOST_ID))
-    log.warning("KEYSET ID __:", str(PIN_KEYSET_ID))
+    log.log("ADE SRED IV :", ksn_ade_iv)
 
     # SRED KSN
     tag_ksn_data = (0xDF, 0xDF, 0x11)
@@ -172,7 +181,7 @@ def GetSecurityConfiguration():
         log.logerr("ADE SRED KSN:", hexlify(ksn_val).decode('utf-8').upper())
     elif PIN_HOST_ID == 0x02:
         log.logerr("ADE SRED KSN: NOT FOUND!")
-    
+      
     # ONLINE PIN
     tag_onlinepin_data = (0xDF, 0xED, 0x03)
     if (tlv.tagCount(tag_onlinepin_data) == 1):
@@ -181,13 +190,19 @@ def GetSecurityConfiguration():
         if PIN_HOST_ID == 0x05:
           ksnStr = bytes.fromhex(hexStrKSN).decode('utf-8')
           ksn = "{:F>20}".format(ksnStr)
+          log.warning("PIN HOST ID :", str(PIN_HOST_ID))
+          log.warning("KEYSET ID __:", str(PIN_KEYSET_ID))
           log.logerr("PINBLOCK KSN:", ksn)
         else:
           log.logerr("PINBLOCK KSN:", hexStrKSN)
     else:
         log.logerr("NO ONLINE PIN REPORTED")
-    
-    
+
+    # Display Idle
+    #conn.send([0xD2, 0x01, 0x01, 0x00])
+    #status, buf, uns = getAnswer()
+
+
 if __name__ == '__main__':
     log = getSyslog()
     conn = connection.Connection();
