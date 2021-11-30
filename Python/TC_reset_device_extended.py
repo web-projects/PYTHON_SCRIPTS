@@ -58,6 +58,7 @@ def processExtendedReset():
         #log.log('Unsolicited', TLVParser(buf) )
 
     c_tag = tagStorage()
+    
     # Bit  1 – 0 PTID in serial response
     #        – 1 PTID plus serial number (tag 9F1E) in serial response
     #        - The following flags are only taken into account when P1 = 0x00:
@@ -101,9 +102,12 @@ def processExtendedReset():
         log.logerr('Invalid TID (or cannot determine TID)!')
 
     # VIPA restart
-    P1 = 0x02
-    P2 = 0x08
+    P1 = 0x02 # VIPA restart
+    P2 = 0x08 # BEEP
     conn.send([0xD0, 0x00, P1, P2])
+    
+    # wait for answer
+    status, buf, uns = getAnswer() 
 
     #Reset display - IDLE SCREEN, BACKLIGHT OFF
     conn.send([0xD2, 0x01, 0x01, 0x00])

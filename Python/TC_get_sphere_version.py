@@ -1,6 +1,7 @@
 from testharness import *
 from testharness.tlvparser import TLVParser
 from sys import exit
+import testharness.fileops as fops
 from testharness.syslog import getSyslog
 from testharness.utility import check_status_error
 import testharness.utility as util
@@ -9,6 +10,8 @@ from functools import partial
 
 import os.path
 from os import path
+
+SPHERE_VERSION_FILE = 'sphere.ver'
 
 def getFile(conn, log, filename , local_fn):
     try:
@@ -29,13 +32,8 @@ def getSphereVersionFile(conn, log, filename):
     if fileExists == True:
         data = open(filename, "rb").read()
         if len(data):
-            return data.split()
+            return data.decode('utf-8').split("|")
     return ""
-    
-    
-def getSphereVersion(conn, log, filename):
-    SPHERE_VER = getSphereVersionFile(conn, log, filename)
-    return SPHERE_VER
 
     
 def ProcessSphereVersion(args):
@@ -50,10 +48,12 @@ def ProcessSphereVersion(args):
       status, buf, uns = conn.receive()
       check_status_error( status )
  
-    SPHERE_VER = getSphereVersion(conn, log, args.filename)
+    SPHERE_VER = getSphereVersionFile(conn, log, args.filename)
     if len(SPHERE_VER):
       log.logwarning("SPHERE VERSION", SPHERE_VER)
-
+      for x in SPHERE_VER:
+        log.logerr(x)
+      
     ''' Reset display '''
     conn.send( [0xD2, 0x01, 0x01, 0x00] )
     status, buf, uns = conn.receive()
@@ -80,8 +80,8 @@ if __name__ == '__main__':
       
     # validate version
     if len(args.filename) == 0:
-      log.log('DEFAULT TO: sphere.txt')
-      args.filename = 'sphere.txt'
+      args.filename = SPHERE_VERSION_FILE
+    log.log('SPHERE-VERSION FILE: ' + SPHERE_VERSION_FILE)
      
     conn = connection.Connection();
     utility.register_testharness_script( partial(ProcessSphereVersion, args) )

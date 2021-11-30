@@ -112,7 +112,8 @@ def showTVRByte5Failures(log, bit):
     tvr_value = switcher.get(bit, "UNKNOWN TVR TYPE")
     
     log.logerr('         [' + tvr_value + ']')
-    
+
+
 def reportCardSource(tlv, log):
   if tlv.tagCount((0x9F, 0x39)):
     entryMode = tlv.getTag((0x9F, 0x39))
@@ -150,3 +151,13 @@ def reportCardSource(tlv, log):
           log.warning('CARSOURECE: CARD')
   else:
     log.warning('ENTRY MODE: UNKNOWN')
+
+
+def getValue(tag, value):
+    tagValue = ''
+    tagIndex = value.find(tag)
+    if tagIndex != -1:
+        offset = len(tag) + 2
+        dataLen = int(value[tagIndex+2:tagIndex+4], 16) * 2
+        tagValue = value[tagIndex+offset:tagIndex+offset+dataLen]
+    return tagValue

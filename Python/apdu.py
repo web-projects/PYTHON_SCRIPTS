@@ -6,8 +6,20 @@ from testharness.utility import check_status_error
 from time import sleep
 from binascii import unhexlify
 
+# CLA|INS|P1|P2=00a404000aa0000000041010d2501000
+# Select File [00, a4]
+# P1 = 04, P2 = 00
+# data = 0a a0000000041010d25010 00
+#        a0000000041010 d25010
+# 11 |00 |10|00| A404000AA0000000041010D25010009D
+#
+
 commands = [
-    (b'00A404000AA0000000041010D2501000', "Select file AID", 0),
+     # AMEX
+     #(b'00A4040008A00000002501040200', "Select file AID", 0),
+     # MASTERCARD
+     #(b'00A404000AA0000000041010D2501000', "Select file AID", 0),
+     (b'00A4040007A000000004101000', "Select file AID", 0),
 ]
 
 ''' How to create example scripts '''

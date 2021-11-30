@@ -8,24 +8,56 @@
 @set COMPORT=%1
 @if NOT "%COMPORT:~0,3%"=="COM" GOTO USAGE
 
-:NEXTSTEP
-::@set TARGER_DIR="upload\config\cless"
-::@set TARGER_DIR="upload\configjt\unattended"
-::@set TARGER_DIR="upload\configjt\attended"
+@if "%2"=="UX" goto UX
+@if "%2"=="CAPK" goto CAPK
+@if "%2"=="TTQ" goto TTQ
 
-:: ICC CONFIGS
+:: ICC CONFIGS - DEFAULTS TO ATTENDED
+:ENGAGE
 @set TARGER_DIR="upload\config\emv\ICC\attended"
-::@set TARGER_DIR="upload\config\emv\ICC\unattended"
-::@set TARGER_DIR="upload\config\emv\ICC\test"
+goto CONFIGS
 
+:UX
+:: ICC CONFIGS - UNATTENDED
+@set TARGER_DIR="upload\config\emv\ICC\unattended"
+goto CONFIGS
+
+:TEST
+::@set TARGER_DIR="upload\config\emv\ICC\test"
+goto UPLOAD
+
+:OLD
 ::@set TARGER_DIR="upload\config\emv\ICC\attended\old"
+goto UPLOAD
 
 :: CAPK FILES
-::@set TARGER_DIR="upload\config\emv\ICC\capk"
+:CAPK
+@set TARGER_DIR="upload\config\emv\ICC\capk"
+goto UPLOAD
 
 :: TTQ - MSD
-::@set TARGER_DIR="upload\config\emv\TTQ"
+:TTQ
+@set TARGER_DIR="upload\config\emv\TTQ"
+goto UPLOAD
 
+:CONFIGS
+@SET /A COUNT=0
+@for /r %%i in (%TARGER_DIR%\VIPA_cfg\*) do (
+  putfile.py --file %%i --serial %COMPORT%
+  @SET /A COUNT+=1
+)
+@for /r %%i in (%TARGER_DIR%\VIPA_emv\*) do (
+  putfile.py --file %%i --serial %COMPORT%
+  @SET /A COUNT+=1
+)
+@ECHO.
+@ECHO FILES UPLOADED: %COUNT%
+@ECHO.
+
+@GOTO END
+
+
+:UPLOAD
 @SET /A COUNT=0
 @for /r %%i in (%TARGER_DIR%\*) do (
   putfile.py --file %%i --serial %COMPORT%

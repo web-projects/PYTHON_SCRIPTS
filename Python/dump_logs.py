@@ -5,6 +5,14 @@ from sys import exit
 from testharness.syslog import getSyslog
 from testharness.utility import check_status_error
 
+#P1
+# 00 - delete all existing logs
+# 01 - do not delete existing logs
+
+#P2
+# 01 - return VIPA log file (since VIPA 6.1.1.1, 6.3.1.0, and 6.2.0.5 this value is deprecated and returns OS logs)
+# 02 - return OS log file
+
 P2_VIPA_LOG = 0x01
 P2_OS_LOG = 0x02
 
@@ -22,8 +30,9 @@ def dump_logs():
    check_status_error( status )
 
    ''' Dump logs '''
-   #conn.send( [0xD0, 0x05, 0x00, P2_VIPA_LOG])
-   conn.send( [0xD0, 0x05, 0x01, P2_VIPA_LOG])
+   conn.send( [0xD0, 0x05, 0x01, P2_OS_LOG])
+   #conn.send( [0xD0, 0x05, 0x01, P2_VIPA_LOG])
+   
    ''' Receive and check '''
    status, buf, uns = conn.receive(30)
    check_status_error( status )

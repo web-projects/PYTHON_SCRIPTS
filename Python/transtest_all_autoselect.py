@@ -137,6 +137,7 @@ EMV_VERIFICATION = 0
 
 # CONTACTLESS CARD WORKFLOWS
 ENABLE_EMV_CONTACTLESS = True
+AID_SELECTION_ENABLED = False
 
 # VIPA VERSION_LBL
 VIPA_VAS_VER = '6.8.2.17'
@@ -379,10 +380,18 @@ def getCVMResult(tlv):
     return cvm_value
 
 def reportTerminalCapabilities(tlv):
+    appLabel = tlv.getTag(0x50)[0]
+    if len(appLabel):
+      log.warning('APPLICATION:', appLabel.decode('ascii'))
+    
     if tlv.tagCount((0x9F,0x33)):
         termCaps = tlv.getTag((0x9F, 0x33))
         if (len(termCaps)):
             log.logerr("TERMINAL CAPABILITIES:", hexlify(termCaps[0]).decode('ascii')) 
+
+    if len(appLabel):
+      displayMsg('\t*** APPLICATION ***\n\n\t' + appLabel.decode('ascii'), 3)
+
 
 # Gets answer from the device, optionally ignoring unsolicited and stopping on errors
 def getAnswer(ignoreUnsolicited = True, stopOnErrors = True):
@@ -1264,6 +1273,7 @@ def startContactless(preferredAID=''):
         #AUTHRESPONSECODE,
         #QUICKCHIP_ENABLED
     ]
+
     # Sale / Purchase with cashback not allowed here
     if TRANSACTION_TYPE != b'\x09':
         start_ctls_tag.append([(0x9C), TRANSACTION_TYPE])
@@ -1271,7 +1281,10 @@ def startContactless(preferredAID=''):
     if len(preferredAID):
         # Preferred Application selected
         start_ctls_tag.append(preferredAID)
-    else:
+    # The terminal has to select AID based on Application Priority Indicator (EMV rules).
+    # The reader performs the automatic selection according to the application priority indexes found in the device PPSE.
+    # This allows for automatic selection (i.e. "single tap"). 
+    elif AID_SELECTION_ENABLED:
         # Application Identifier Terminal (AID)
         start_ctls_tag.append([(0x9F, 0x06), b'\x00\x01'])
     
@@ -1304,6 +1317,101 @@ def startContactless(preferredAID=''):
     conn.send([0xC0, 0xA0, P1, 0x00], start_ctls_templ)
 
     log.log('Starting Contactless transaction')
+
+
+# From a list of AIDS, a selection needs to be made to process Contactless workflows - a second tap is required
+def processCtlsAIDList(tlv):
+    # BF0C Tag Listing AIDS
+    if tlv.tagCount(0xA5):
+        fci_value = tlv.getTag((0xA5))[0]
+
+        value = hexlify(fci_value).decode('ascii')
+        # log.log("DATA:" + value )
+
+        tlvp = TLVPrepare()
+        # even number of bytes
+        value += '9000'
+        buf = unhexlify(value)
+        tlv_tags = tlvp.parse_received_data(buf)
+        tags = TLVParser(tlv_tags)
+
+        aidList = []
+        lblList = []
+
+        for item in tags:
+            value = hexlify(item[1]).decode('ascii')
+            # log.log(value)
+            # 4f: AID
+            aid = TC_TransactionHelper.getValue('4f', value)
+            # log.log("AID:" + aid)
+            aidList.append(aid)
+            # 50: LABEL - OFFSET = 4F+HH+len(aid)
+            label = TC_TransactionHelper.getValue('50', value[len(aid) + 4 :])
+            label = bytes.fromhex(label)
+            label = label.decode('ascii')
+            # log.log("LABEL:" + label)
+            lblList.append(label)
+
+        # When 9f06 is two bytes long and there is only one AID on the list,
+        # it will be selected automatically
+        if len(aidList) <= 1:
+            return ''
+
+        log.log('We have ', len(lblList), ' applications')
+
+        if len(lblList) != len(aidList):
+            log.logerr('Invalid response: AID count ', len(aidList), ' differs from Labels count ', len(lblList))
+            exit(-1)
+
+        # TODO: multi-message not allowed
+        # sending choice to terminal in ASCII formatted string
+        # message = ''
+        # for i in range(len(aidList)):
+        #    message += "".join("{0:x}".format(ord(c)) for c in lblList[i])
+        #    message += '0a'
+
+        # TEST MESSAGE
+        # message = '5061676f42414e434f4d41540a4d61657374726f0a'
+        # slen =  len(message) // 2
+        # length = hex( slen )
+        # choice = requestChoice( message, length[2:] )
+
+        # Console workflow
+        for i in range(len(aidList)):
+            log.log('App', i + 1, ': ' + aidList[i] + ' - [' + lblList[i] + ']')
+        sel = -1
+        log.log('Select App: ')
+
+        while True:
+            # Note: The below will work for up to 9 apps...
+            if kbhit():
+                try:
+                    sel = ord(getch())
+                except:
+                    print('invalid key!')
+                # TC_transtest_all_autoselect_EMV.log.log('key press ', sel)
+                if sel > 0x30 and sel <= 0x30 + len(lblList):
+                    sel -= 0x30  # to number (0 .. x)
+                    break
+                elif sel == 27:
+                    # ABORT [D0 FF]
+                    return AbortTransaction()
+
+                print(' Invalid selection, please pick valid number! ')
+
+            if conn.is_data_avail():
+                status, buf, uns = getEMVAnswer()
+                if status != 0x9000:
+                    log.logerr('Transaction terminated with status ', hex(status))
+                    return -1
+                break
+
+        # user made a selection
+        if sel >= 0:
+            sel = sel - 1
+            log.log('Selected ', sel)
+            PREFERRED_AID = [(0x9F, 0x06), bytes.fromhex(aidList[sel])]
+            return PREFERRED_AID
 
 
 # Processes contactless continue
@@ -1674,10 +1782,11 @@ def processTransaction(args):
                   
                 # VAS Payload
                 if tlv.tagCount(0x6F):
-                  log.warning('VAS PAYLOAD')
-                  continueContactless()
-                  tranType = 3
-                  break
+                  preferredAid = processCtlsAIDList(tlv)
+                  if len(preferredAid):
+                      startContactless(preferredAid)
+                      status, buf, uns = getAnswer()
+                      continue                  
                   
             # cannot decide how to proceed with response
             log.logerr("Invalid packet detected, ignoring it!")

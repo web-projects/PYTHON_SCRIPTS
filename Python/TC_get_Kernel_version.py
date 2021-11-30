@@ -1,10 +1,3 @@
-#!/usr/bin/python3
-'''
-Created on 21-06-2012
-
-@authors: Lucjan_B1, Kamil_P1
-'''
-
 from testharness import *
 from testharness.tlvparser import TLVParser, tagStorage
 from sys import exit
@@ -33,6 +26,18 @@ def getAnswer(ignoreUnsolicited = True, stopOnErrors = True):
   
 #
 # Main function
+#
+# The first 4 bytes are the checksum of the crypto library. 
+# The next 4 bytes are the checksum of the kernel’s core.
+# Third four bytes are the combined checksum of first and second parts.
+# The final 4 bytes are the checksum of the application specific configuration.
+#
+# ex: 2FD4B4F16F1BBC4E00C067C096369E1F
+#     2FD4B4F1 6F1BBC4E 00C067C0 96369E1F
+#     
+#     2FD4B4F16F1BBC4E00C067C06D68B769
+#     2FD4B4F1 6F1BBC4E 00C067C0 6D68B769
+#
 def processGetKernelVersion():
     req_unsolicited = conn.connect()
     if req_unsolicited:
@@ -53,6 +58,7 @@ def processGetKernelVersion():
         tid = ''
         log.logerr('Invalid TID (or cannot determine TID)!')
 
+    # VISA AID
     # a000000003101001
     # a0 00 00 00 03 10 10
     aid = b'\xa0\x00\x00\x00\x03\x10\x10'
@@ -72,7 +78,6 @@ def processGetKernelVersion():
     '''
     #Send Get EMV Hash Values
     ''' iccdata.dat and icckeys.key required with RELEASE firmware '''
-    #conn.send([0xDE, 0x01, 0x00, 0x00], c_tag.getTemplate(0xE0))
     conn.send([0xDE, 0x01, 0x00, 0x00], e0_templ)
 
     status, buf, uns = conn.receive()
@@ -86,6 +91,13 @@ def processGetKernelVersion():
     #else: 
     #    tid = ''
     #    log.logerr('Invalid TID (or cannot determine TID)!')
+    
+    # KERNEL LAST 4 BYTES
+    #log.log('BUF LEN =', len(buf[0]))
+    if len(buf[0]) > 24:
+      log.logerr('KERNEL CHECKSUM: ' + buf[0][24:].decode('utf-8').upper())
+    else:
+      log.logerr('NO KERNEL CHECKSUM')
 
 if __name__ == '__main__':
     log = getSyslog()
