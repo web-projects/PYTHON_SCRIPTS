@@ -190,6 +190,7 @@ import re
 # 2. CDET_US_DEBIT_1C.5 failing to process with code 500
 # 3. Collision detection improvement
 # 4. Fixed CO response in First Continue Transaction if card is: 00=blacklisted, 01=non-blacklisted
+#    PAN exception processing is related to DNA_TC_24 ICC TEST CASE.
 # VERSION_LBL = '1.0.0.29'
 #
 # 1. Fix incorrect TAC_Denial vs TAC_Online VIPA tag

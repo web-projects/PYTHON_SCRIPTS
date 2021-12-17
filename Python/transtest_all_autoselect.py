@@ -137,7 +137,7 @@ EMV_VERIFICATION = 0
 
 # CONTACTLESS CARD WORKFLOWS
 ENABLE_EMV_CONTACTLESS = True
-AID_SELECTION_ENABLED = False
+AID_SELECTION_ENABLED = True
 
 # VIPA VERSION_LBL
 VIPA_VAS_VER = '6.8.2.17'
@@ -380,17 +380,18 @@ def getCVMResult(tlv):
     return cvm_value
 
 def reportTerminalCapabilities(tlv):
-    appLabel = tlv.getTag(0x50)[0]
-    if len(appLabel):
-      log.warning('APPLICATION:', appLabel.decode('ascii'))
-    
-    if tlv.tagCount((0x9F,0x33)):
-        termCaps = tlv.getTag((0x9F, 0x33))
-        if (len(termCaps)):
-            log.logerr("TERMINAL CAPABILITIES:", hexlify(termCaps[0]).decode('ascii')) 
+    if (tlv.tagCount(0x50)):
+      appLabel = tlv.getTag(0x50)[0]
+      if len(appLabel):
+        log.warning('APPLICATION:', appLabel.decode('ascii'))
+      
+      if tlv.tagCount((0x9F,0x33)):
+          termCaps = tlv.getTag((0x9F, 0x33))
+          if (len(termCaps)):
+              log.logerr("TERMINAL CAPABILITIES:", hexlify(termCaps[0]).decode('ascii')) 
 
-    if len(appLabel):
-      displayMsg('\t*** APPLICATION ***\n\n\t' + appLabel.decode('ascii'), 3)
+      if len(appLabel):
+        displayMsg('\t*** APPLICATION ***\n\n\t' + appLabel.decode('ascii'), 3)
 
 
 # Gets answer from the device, optionally ignoring unsolicited and stopping on errors
@@ -886,6 +887,82 @@ def sendSecondGenAC(tlv, tid):
     
     return TLVParser(buf)
  
+ 
+def applicationSelection(tlv):
+  # This is app selection stuff
+  appLabels = tlv.getTag(0x50)
+  appAIDs = tlv.getTag((0x9F, 0x06))
+  log.log('We have ', len(appLabels), ' applications')
+  if len(appLabels) != len(appAIDs):
+      log.logerr('Invalid response: AID count ', len(appAIDs), ' differs from Labels count ', len(appLabels))
+      exit(-1)
+  for i in range(len(appLabels)):
+      log.log('App ', i+1, ': AID ', hexlify(appAIDs[i]), ', label ', str(appLabels[i]))
+  sel = -1
+
+  while True:
+      #sels = input('Choose one app: ')
+      #try:
+      #    sel = int(sels.strip())
+      #except:
+      #    print('invalid entry!!!')
+      #if sel > 0 and sel <= len(appLabels): break
+      #print(' Invalid selection, please pick valid number! ')
+      # Note: The below will work for up to 9 apps...
+      if kbhit():
+          try:
+              sel = ord(getch())
+          except:
+              print('invalid key!')
+          #log.log('key press ', sel)
+          if sel > 0x30 and sel <= 0x30+len(appLabels): 
+              sel -= 0x30 # to number (0 .. x)
+              break
+          elif sel == 27:
+              AbortTransaction()
+              return -1
+          print(' Invalid selection, please pick valid number! ')
+      if conn.is_data_avail():
+          status, buf, uns = getEMVAnswer()
+          if status != 0x9000:
+              log.logerr('Transaction terminated with status ', hex(status))
+              return -1
+          break
+  # set application selection based on choice
+  if sel >= 0:
+      sel = sel-1
+      log.log('Selected ', sel)
+      app_sel_tags = [
+          [(0x50), bytearray(appLabels[sel])],
+          [(0x9F, 0x06), bytearray(appAIDs[sel])]
+      ]
+      app_sel_templ = ( 0xE0, app_sel_tags )
+      conn.send([0xDE, 0xD2, 0x00, 0x00], app_sel_templ)
+      log.log('App selected, waiting for response...')
+      return 0
+
+  return 1
+
+
+def applicationSelectionAutomatic(tlv):
+  if tlv.tagCount(0x50):
+    appLabels = tlv.getTag(0x50)
+    appAIDs = tlv.getTag((0x9F, 0x06))
+    log.log('We have ', len(appLabels), ' applications')
+    if len(appLabels) != len(appAIDs):
+        log.logerr('Invalid response: AID count ', len(appAIDs), ' differs from Labels count ', len(appLabels))
+        exit(-1)
+    # auto select first item
+    sel = 0
+    app_sel_tags = [
+        [(0x50), bytearray(appLabels[sel])],
+        [(0x9F, 0x06), bytearray(appAIDs[sel])]
+    ]
+    app_sel_templ = ( 0xE0, app_sel_tags )
+    conn.send([0xDE, 0xD2, 0x00, 0x00], app_sel_templ)
+    log.warning('APPLICATION SELECTED:', appLabels[sel])
+    return 0
+
 # EMV transaction
 def processEMV(tid):
 
@@ -893,6 +970,15 @@ def processEMV(tid):
 
     transaction_counter = b'\x00\x01'
 
+    #app_sel_tags = [
+    #    [(0x9F, 0x06), bytearray('a000000003101001')],
+    #    [(0x50), bytearray('CREDIT')],
+    #    [(0x87), b'\x01'],
+    #    [(0x9F, 0x06), bytearray('a000000003101002')],
+    #    [(0x50), bytearray('DEBIT')],
+    #    [(0x87), b'\x01']
+    #]
+    
     start_trans_tag = [
          [(0x9C), TRANSACTION_TYPE],                                      # transaction type
          [(0x9F, 0x02), AMOUNTFORINQUIRY if ISBALANCEINQUIRY else AMOUNT],# Amount
@@ -940,7 +1026,7 @@ def processEMV(tid):
         if uns and status == 0x9000:
             tlv = TLVParser(buf)
             if tlv.tagCount(0xE6) != 0:
-                log.log('Multi application card!')
+                log.log('Multi application card! - continue processing...')
                 continue
             else:
                 log.log('Ignoring unsolicited packet ', tlv)
@@ -950,56 +1036,12 @@ def processEMV(tid):
             tlv = TLVParser(buf)
         
             if tlv.tagCount(0x50) > 1 and tlv.tagCount((0x9F, 0x06)) > 1:
-                # This is app selection stuff
-                appLabels = tlv.getTag(0x50)
-                appAIDs = tlv.getTag((0x9F, 0x06))
-                log.log('We have ', len(appLabels), ' applications')
-                if len(appLabels) != len(appAIDs):
-                    log.logerr('Invalid response: AID count ', len(appAIDs), ' differs from Labels count ', len(appLabels))
-                    exit(-1)
-                for i in range(len(appLabels)):
-                    log.log('App ', i+1, ': AID ', hexlify(appAIDs[i]), ', label ', str(appLabels[i]))
-                sel = -1
-
-                while True:
-                    #sels = input('Choose one app: ')
-                    #try:
-                    #    sel = int(sels.strip())
-                    #except:
-                    #    print('invalid entry!!!')
-                    #if sel > 0 and sel <= len(appLabels): break
-                    #print(' Invalid selection, please pick valid number! ')
-                    # Note: The below will work for up to 9 apps...
-                    if kbhit():
-                        try:
-                            sel = ord(getch())
-                        except:
-                            print('invalid key!')
-                        #log.log('key press ', sel)
-                        if sel > 0x30 and sel <= 0x30+len(appLabels): 
-                            sel -= 0x30 # to number (0 .. x)
-                            break
-                        elif sel == 27:
-                            AbortTransaction()
-                            return -1
-                        print(' Invalid selection, please pick valid number! ')
-                    if conn.is_data_avail():
-                        status, buf, uns = getEMVAnswer()
-                        if status != 0x9000:
-                            log.logerr('Transaction terminated with status ', hex(status))
-                            return -1
-                        break
-                if sel >= 0:
-                    sel = sel-1
-                    log.log('Selected ', sel)
-                    app_sel_tags = [
-                        [(0x50), bytearray(appLabels[sel])],
-                        [(0x9F, 0x06), bytearray(appAIDs[sel])]
-                    ]
-                    app_sel_templ = ( 0xE0, app_sel_tags )
-                    conn.send([0xDE, 0xD2, 0x00, 0x00], app_sel_templ)
-                    log.log('App selected, waiting for response...')
-                    continue
+                #selected = applicationSelection(tlv)
+                selected = applicationSelectionAutomatic(tlv)
+                if selected == 0:
+                  continue
+                if selected == -1:
+                  return -1
             break
 
     #Let's check VSP
@@ -1264,9 +1306,9 @@ def startContactless(preferredAID=''):
         [(0x9F, 0x02), AMOUNT],         # amount
         [(0x9F, 0x03), AMTOTHER],       # cashback
         [(0x9A), DATE],                 # system date
-        [(0x9F,0x21), TIME],            # system time
-        #[(0x9F,0x41), b'\x00\x01'],    # sequence counter
-        #[(0xDF,0xA2,0x04), b'\x01'],   # Application selection using PINPad
+        [(0x9F, 0x21), TIME],           # system time
+        #[(0x9F, 0x41), b'\x00\x01'],   # sequence counter
+        #[(0xDF, 0xA2,0x04), b'\x01'],  # Application selection using PINPad
         #[(0xDF, 0xDF, 0x0D), b'\x01'], # Force transaction online
         CURRENCY_CODE,                  # currency code
         COUNTRY_CODE,                   # country code
@@ -1410,6 +1452,52 @@ def processCtlsAIDList(tlv):
         if sel >= 0:
             sel = sel - 1
             log.log('Selected ', sel)
+            PREFERRED_AID = [(0x9F, 0x06), bytes.fromhex(aidList[sel])]
+            return PREFERRED_AID
+
+
+def processCtlsAIDListAutomatic(tlv):
+    # BF0C Tag Listing AIDS
+    if tlv.tagCount(0xA5):
+        fci_value = tlv.getTag((0xA5))[0]
+
+        value = hexlify(fci_value).decode('ascii')
+        # log.log("DATA:" + value )
+
+        tlvp = TLVPrepare()
+        # even number of bytes
+        value += '9000'
+        buf = unhexlify(value)
+        tlv_tags = tlvp.parse_received_data(buf)
+        tags = TLVParser(tlv_tags)
+
+        aidList = []
+        lblList = []
+
+        for item in tags:
+            value = hexlify(item[1]).decode('ascii')
+            # log.log(value)
+            # 4f: AID
+            aid = TC_TransactionHelper.getValue('4f', value)
+            # log.log("AID:" + aid)
+            aidList.append(aid)
+            # 50: LABEL - OFFSET = 4F+HH+len(aid)
+            label = TC_TransactionHelper.getValue('50', value[len(aid) + 4 :])
+            label = bytes.fromhex(label)
+            label = label.decode('ascii')
+            # log.log("LABEL:" + label)
+            lblList.append(label)
+
+        # When 9f06 is two bytes long and there is only one AID on the list,
+        # it will be selected automatically
+        if len(aidList) <= 1:
+            return ''
+
+        # user made a selection
+        sel = 1
+        if sel >= 0:
+            sel = sel - 1
+            log.warning('APPLICATION SELECTED:', aidList[sel])
             PREFERRED_AID = [(0x9F, 0x06), bytes.fromhex(aidList[sel])]
             return PREFERRED_AID
 
@@ -1593,8 +1681,8 @@ def processTransaction(args):
     # Bit 0 - Sets the device to report changes in card status
     #
     #P1 = 0x43
-    P1 = 0x7F
-    #P1 = 0x3F
+    #P1 = 0x7F
+    P1 = 0x3F
     # P2 - Monitor card and keyboard status
     # 00 - stop reporting key presses
     # Bit 1 - report function key presses
@@ -1626,7 +1714,7 @@ def processTransaction(args):
       ctls = initContactless()
     else:
       ctls = False
-      
+    
     ###ctls = False
     if (cardState != EMV_CARD_INSERTED):
         if (ctls):
@@ -1782,7 +1870,8 @@ def processTransaction(args):
                   
                 # VAS Payload
                 if tlv.tagCount(0x6F):
-                  preferredAid = processCtlsAIDList(tlv)
+                  #preferredAid = processCtlsAIDList(tlv)
+                  preferredAid = processCtlsAIDListAutomatic(tlv)
                   if len(preferredAid):
                       startContactless(preferredAid)
                       status, buf, uns = getAnswer()

@@ -147,41 +147,17 @@ def processManualEntry():
     conn.send([0xD0, 0x00, 0x00, 0x00])
     status, buf, uns = getAnswer()
 
-    # putfile.py --serial COM20 --file upload/custom/manual_payment.html --rfile www/mapp/manual_payment.html 
-    
-    target_html = b'mapp/alphanumeric_entry.html'
-    #target_html = b'mapp/manual_payment.html'
-    
     # Customized title 'Enter Card Number'
-    manual_entry_custom_tag = [
-      [ (0xDF, 0xAA, 0x02), b'TEMPLATE_INPUT_TYPE' ],   [ (0xDF, 0xAA, 0x03), b'number' ],
-      [ (0xDF, 0xAA, 0x02), b'input_precision' ],       [ (0xDF, 0xAA, 0x03), b'0' ],
-      [ (0xDF, 0xAA, 0x02), b'max_length' ],            [ (0xDF, 0xAA, 0x03), b'16' ],
-      [ (0xDF, 0xAA, 0x02), b'entry_mode_visibility' ], [ (0xDF, 0xAA, 0x03), b'hidden' ],
-      [ (0xDF, 0xAA, 0x02), b'timeout' ],               [ (0xDF, 0xAA, 0x03), b'60' ],
-      [ (0xDF, 0xAA, 0x02), b'tsep' ],                  [ (0xDF, 0xAA, 0x03), b'' ],
-      # PAN ENTRY: "Enter Card PAN"
-      [ (0xDF, 0xAA, 0x01), target_html ],
-      [ (0xDF, 0xAA, 0x02), b'title_text' ],            [ (0xDF, 0xAA, 0x03), b'Enter Card Number' ],
-      # EXPIRY: "Enter Card Expiry"
-      [ (0xDF, 0xAA, 0x01), target_html ],
-      [ (0xDF, 0xAA, 0x02), b'title_text' ],            [ (0xDF, 0xAA, 0x03), b'Enter Card Expiry' ],
-      # CVV2 ENTRY: "Enter Card CVV2/CVC2/CID"
-      [ (0xDF, 0xAA, 0x01), target_html ],
-      [ (0xDF, 0xAA, 0x02), b'title_text' ],           [ (0xDF, 0xAA, 0x03), b'Enter Card CVV2/CVC2/CID' ],
-      #
-      # Maximum length of the PAN number
-      [ (0xDF, 0x83, 0x05), b'\x10' ]
-    ]
-    
-    # Standard TAG
     manual_entry_tag = [
-          [ (0xDF, 0x83, 0x05), b'\x10' ]
+      [ (0xDF, 0x83, 0x05), b'\x10' ],                # Maximum length of the PAN number
+      [ (0xDF, 0xAA, 0x01), b'mapp/alphanumeric_entry.html' ],
+      [ (0xDF, 0xAA, 0x02), b'title_text' ],          [ (0xDF, 0xAA, 0x03), b'Enter Card Number' ],
+      [ (0xDF, 0xAA, 0x02), b'TEMPLATE_INPUT_TYPE' ], [ (0xDF, 0xAA, 0x03), b'number' ],
+      [ (0xDF, 0xAA, 0x02), b'input_precision' ],     [ (0xDF, 0xAA, 0x03), b'0' ],
+      [ (0xDF, 0xAA, 0x02), b'max_len' ],             [ (0xDF, 0xAA, 0x03), b'4' ],
+      [ (0xDF, 0xAA, 0x02), b'timeout' ],             [ (0xDF, 0xAA, 0x03), b'300' ]
     ]
-    
-    # Select from custom or standard tagset
-    #manual_pan_templ = ( manual_entry_tag )
-    manual_pan_templ = ( manual_entry_custom_tag )
+    manual_pan_templ = ( manual_entry_tag )
 
     #Send manual PAN entry
     # P1
@@ -206,7 +182,7 @@ def processManualEntry():
     conn.send([0xD2, 0x14, p1, p2], manual_pan_templ)
     
     status, buf, uns = conn.receive()
-
+    
     tlv = TLVParser(buf)
      
     # format track2

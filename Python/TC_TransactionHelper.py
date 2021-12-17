@@ -119,10 +119,10 @@ def reportCardSource(tlv, log):
     entryMode = tlv.getTag((0x9F, 0x39))
     if len(entryMode):
        entryMode = ord(entryMode[0])
-       #log.logerr('MODE=', entryMode)
+       log.logerr('MODE=', entryMode)
        switcher = {
-             91: "CLESS-MSR",
-             90: "MSR",
+            145: "CLESS-MSR",           # HEX 0x91
+            144: "MSR",                 # HEX 0x90
               8: "Amex Wallet",
               7: "Contactless-ICR",
               5: "Contact-ICR",
@@ -133,7 +133,7 @@ def reportCardSource(tlv, log):
           }
        entryMode_value = switcher.get(entryMode, "UNKNOWN ENTRY MODE")
        print('')
-       log.warning('ENTRY MODE:', entryMode_value)
+       log.warning('POS ENTRY MODE:', entryMode_value)
        if entryMode == 7:
         if tlv.tagCount((0xC6)):
           vasTag = tlv.getTag((0xC6), TLVParser.CONVERT_HEX_STR)[0].upper()
@@ -150,7 +150,7 @@ def reportCardSource(tlv, log):
         else:
           log.warning('CARSOURECE: CARD')
   else:
-    log.warning('ENTRY MODE: UNKNOWN')
+    log.warning('POS ENTRY MODE: UNKNOWN')
 
 
 def getValue(tag, value):

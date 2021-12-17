@@ -79,9 +79,9 @@ def processRequest():
       [ (0xDF, 0xAA, 0x01), html_file ],
       [ (0xDF, 0xAA, 0x02), b'logo_image' ],          [ (0xDF, 0xAA, 0x03), html_logo ],
       [ (0xDF, 0xAA, 0x02), b'TEMPLATE_INPUT_TYPE' ], [ (0xDF, 0xAA, 0x03), b'number' ],
-      [ (0xDF, 0xAA, 0x02), b'title_text' ],          [ (0xDF, 0xAA, 0x03), b'ENTER NUMBER' ],
+      [ (0xDF, 0xAA, 0x02), b'title_text' ],          [ (0xDF, 0xAA, 0x03), b'Enter Card Number' ],
       [ (0xDF, 0xAA, 0x02), b'input_precision' ],     [ (0xDF, 0xAA, 0x03), b'0' ],
-      [ (0xDF, 0xAA, 0x02), b'max_len' ],             [ (0xDF, 0xAA, 0x03), b'4' ],
+      [ (0xDF, 0xAA, 0x02), b'max_len' ],             [ (0xDF, 0xAA, 0x03), b'16' ],
    ]
    html_templ = ( 0xE0, html_tags )
    
@@ -94,7 +94,8 @@ def processRequest():
    ''' Check for HTML display result '''
    status, buf, uns = conn.receive()
    check_status_error( status )
-    
+   exit(0)
+   
    ''' save to json file '''
    tlv = TLVParser(buf)
    tag_output_data = (0xDF, 0xAA, 0x05)
