@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+    <body>        
+        
+        <!--HEADER-->
+        
+        <!--CONTENT-->
+        <div class="content" style="overflow: auto; height: 79%;">
+      
+        <!--CONTENT-->
+        <div class="content" style="overflow: auto; height: 79%;">
+
+            <div class="body_header"><?var title_text?></div>
+            <div class="body_message"><?foreach text|(center)|[value](br)|(/center)|?></div>
+            
+            <!--INPUT-->                        
+            <table cellpadding="0" 
+               cellspacing="0" 
+               border="0"
+               style="height: 25px;"
+               align="center">
+               <tr>
+                   <td valign="top">
+                        <input type="<?var TEMPLATE_INPUT_TYPE ?>" 
+                            name='input_data' accesskey='&#13;'
+                            maxlength="<?var max_length ?>"
+                            allowed_chars="<?var allowed_chars ?>"
+                            precision="<?var input_precision ?>"
+                            mask="<?var mask?>"
+                            autosize class="regular_input" action="return 0"/>
+                    </td>
+                    <td align="left" valign="top">
+                        <button class="regular_clear_bttn" nofocus action="call input_data.sendkey(8)">
+                            <div class="clear_arrow"></div>
+                        </button>
+                    </td>
+                </tr>
+            </table>
+            
+        </div>
+        
+        <table border="0" cellpadding="0" cellspacing="0" style="width: 100%; height: 12%">
+            <tr>
+                <td class="button_bar" style="width:20%;">
+                    <button class="negative_bttn"  style="width: 100%; height: 100%" accesskey="&#27;" action="return -1">
+                        <div class="negative_icon"></div>
+                    </button>
+                </td><td class="button_bar" style="width:60%;">
+                    <button class="action_bttn" style="width: 100%; height: 100%; text-align: center;"
+                        <?ifeq entry_mode_visibility hidden disabled?>
+                        action="return 200">
+                        <div style="width: 100%; height:100%;"><?var entry_mode?></div>
+                    </button>
+                </td><td class="button_bar" style="width:20%; border-right: 0px">
+                    <button class="positive_bttn" style="width:100%; height: 100%;" accesskey="&#13;" action="return 0">
+                            <div class="positive_icon">&nbsp;</div>
+                    </button>
+                </td>
+            </tr>
+        </table>
+
+        <!-- timeout action -->
+        <input type="timeout" style="visibility: hidden" value="<?var timeout?>" action="return -3">
+
+        <!-- clear key for France -->
+        <?ifeq allow_empty_clear 1 (button accesskey='&#8;' action='return 201' style='visibility:hidden')(/button)?>
+        <?ifneq allow_empty_clear 1 (button accesskey='&#8;' action='' style='visibility:hidden')(/button)?>
+
+    </body>
+</html>
