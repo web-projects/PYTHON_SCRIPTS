@@ -379,20 +379,6 @@ def getCVMResult(tlv):
     cvm_value = switcher.get(encrypted_pin, "UNKNOWN CVM TYPE")
     return cvm_value
 
-def reportTerminalCapabilities(tlv):
-    if (tlv.tagCount(0x50)):
-      appLabel = tlv.getTag(0x50)[0]
-      if len(appLabel):
-        log.warning('APPLICATION:', appLabel.decode('ascii'))
-      
-      if tlv.tagCount((0x9F,0x33)):
-          termCaps = tlv.getTag((0x9F, 0x33))
-          if (len(termCaps)):
-              log.logerr("TERMINAL CAPABILITIES:", hexlify(termCaps[0]).decode('ascii')) 
-
-      if len(appLabel):
-        displayMsg('\t*** APPLICATION ***\n\n\t' + appLabel.decode('ascii'), 3)
-
 
 # Gets answer from the device, optionally ignoring unsolicited and stopping on errors
 def getAnswer(ignoreUnsolicited = True, stopOnErrors = True):
@@ -887,7 +873,7 @@ def sendSecondGenAC(tlv, tid):
     
     return TLVParser(buf)
  
- 
+
 def applicationSelection(tlv):
   # This is app selection stuff
   appLabels = tlv.getTag(0x50)
@@ -1098,15 +1084,21 @@ def processEMV(tid):
                 
             if tlv.tagCount(0xE4):
             
+                # CardSource
+                TC_TransactionHelper.reportCardSource(tlv, log)
+
                 # Terminal Capabilites
-                reportTerminalCapabilities(tlv)
-                    
+                appLabel = TC_TransactionHelper.reportTerminalCapabilities(tlv, log)
+                if len(appLabel):
+                  displayMsg('\t*** APPLICATION ***\n\n\t' + appLabel.decode('ascii'), 3)
+
                 # HMAC PAN
                 displayHMACPAN(tlv)
                 
                 cvm_value = getCVMResult(tlv)
                 # NOT AN EROR, JUST EASIER TO FIND IN THE TERMINAL OUTPUT
-                log.logerr('CVM REQUESTED:', cvm_value)
+                log.logerr('CVM REQUESTED ______:', cvm_value)
+                print('')
                 
                 if cvm_value == "ONLINE PIN" or cvm_value == "ENCRYPTED BY ICC":
                     if hasPINEntry == True:
@@ -1251,11 +1243,11 @@ def displayHMACPAN(tlv):
       dataLen = int(sRED[panIndex+6:panIndex+8], 16) * 2
       panData = sRED[panIndex+8:panIndex+8+dataLen]
       if len(panData):
-        log.warning("HMAC PAN TOKEN:", panData)
+        log.warning("HMAC PAN TOKEN ______:", panData)
     else:
-      log.warning("HMAC PAN TOKEN: TAG NOT FOUND")
+      log.warning("HMAC PAN TOKEN ______: TAG NOT FOUND")
   else:
-    log.warning("HMAC PAN TOKEN: NOT REPORTED")
+    log.warning("HMAC PAN TOKEN ______: NOT REPORTED")
 
 
 # ---------------------------------------------------------------------------- #
@@ -1740,6 +1732,7 @@ def processTransaction(args):
                 ##log.log('Card reading attempt...')
                 # Check for insertion unsolicited message
                 tlv = TLVParser(buf)
+                    
                 #if tlv.tagCount(0x63):
                 #    reader_tag_val = tlv.getTag((0x63), TLVParser.CONVERT_INT)[0]
                 #    log.log("reader status ",hex(reader_tag_val), 'h')
@@ -1802,12 +1795,19 @@ def processTransaction(args):
                     
                 if tlv.tagCount(0xE4):
                 
+                    # CardSource
+                    TC_TransactionHelper.reportCardSource(tlv, log)
+
                     # Terminal Capabilites
-                    reportTerminalCapabilities(tlv)
+                    appLabel = TC_TransactionHelper.reportTerminalCapabilities(tlv, log)
+                    if len(appLabel):
+                      displayMsg('\t*** APPLICATION ***\n\n\t' + appLabel.decode('ascii'), 3)
                 
                     cvm_value = getCVMResult(tlv)
                     # NOT AN EROR, JUST EASIER TO FIND IN THE TERMINAL OUTPUT
-                    log.logerr('CVM REQUESTED:', cvm_value)                
+                    log.logerr('CVM REQUESTED ______:', cvm_value)
+                    print('')
+                      
                     # decrypt transaction                
                     vspDecrypt(tlv, tid)
 
@@ -1838,6 +1838,8 @@ def processTransaction(args):
                     break
                     
                 if tlv.tagCount(0xE7):
+                    # CardSource
+                    TC_TransactionHelper.reportCardSource(tlv, log)
                     vspDecrypt(tlv, tid)
                     displayEncryptedTrack(tlv)
                     displayHMACPAN(tlv)
@@ -1885,9 +1887,6 @@ def processTransaction(args):
         log.log("Card already inserted!")
         result = processEMV(tid)
         tranType = 1
-
-    # CardSource
-    TC_TransactionHelper.reportCardSource(tlv, log)
 
     # TVR status
     checkTVRStatus(tlv)

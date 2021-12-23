@@ -486,11 +486,6 @@ def vsdSREDTemplateDebugger(tlv, tid):
                 + '\\ndevice_serial=' + str(tid)
             )
 
-def reportTerminalCapabilities(tlv):
-    if tlv.tagCount((0x9F, 0x33)):
-        termCaps = tlv.getTag((0x9F, 0x33))
-        if len(termCaps):
-            log.logwarning("TERMINAL CAPABILITIES:", hexlify(termCaps[0]).decode('ascii'))
 
 # Gets answer from the device, optionally ignoring unsolicited and stopping on errors
 def getAnswer(ignoreUnsolicited=True, stopOnErrors=True):
@@ -1781,8 +1776,9 @@ def processEMV(tid):
 
                     cvm_value = TC_TransactionHelper.getCVMResult(tlv)
                     # NOT AN EROR, JUST EASIER TO FIND IN THE TERMINAL OUTPUT
-                    log.logerr('CVM REQUESTED:', cvm_value)
-
+                    log.logerr('CVM REQUESTED _______:', cvm_value)
+                    print('')
+ 
                     # if cvm_value == "ONLINE PIN":
                     #   return OnlinePinTransaction(tlv, EMV_CARD_INSERTED, continue_tpl)
 
@@ -1793,14 +1789,18 @@ def processEMV(tid):
 
                 TC_TCLink.saveEMVData(tlv, 0xE4)
 
+                # Card Source
+                TC_TransactionHelper.reportCardSource(tlv, log)
+
                 # check Terminal Capabilities reports correctly - CONTACTLESS WORKFLOW
-                reportTerminalCapabilities(tlv)
+                TC_TransactionHelper.reportTerminalCapabilities(tlv, log)
 
                 cvm_value = TC_TransactionHelper.getCVMResult(tlv)
 
                 # NOT AN EROR, JUST EASIER TO FIND IN THE TERMINAL OUTPUT
-                log.logerr('CVM REQUESTED:', cvm_value)
-
+                log.logerr('CVM REQUESTED _______:', cvm_value)
+                print('')
+                 
                 # if cvm_value == "ONLINE PIN":
                 #    hasPINEntry = getOnlinePIN(tlv)
                 #    if hasPINEntry:
@@ -2201,8 +2201,11 @@ def processTransaction(args):
                 # TEMPLATE E4: ONLINE ACTION REQUIRED
                 if tlv.tagCount(0xE4):
 
+                    # Card Source
+                    TC_TransactionHelper.reportCardSource(tlv, log)
+                    
                     # Terminal Capabilites
-                    reportTerminalCapabilities(tlv)
+                    TC_TransactionHelper.reportTerminalCapabilities(tlv, log)
 
                     # dynamic validation for MasterCard above floor limit and CVM
                     if tlv.tagCount((0x84)):
@@ -2234,8 +2237,9 @@ def processTransaction(args):
                         cvm_value = switcher.get(encrypted_pin, "UNKNOWN CVM TYPE")
 
                         # NOT AN EROR, JUST EASIER TO FIND IN THE TERMINAL OUTPUT
-                        log.logerr('CVM REQUESTED:', cvm_value)
-
+                        log.logerr('CVM REQUESTED _______:', cvm_value)
+                        print('')
+                         
                         # VISA: In the instance of a cash or cashback transaction an online PIN is always required,
                         # regardless of what CVM method might be indicated in the CTQ (tag '9F6C')
                         if TRANSACTION_TYPE == b'\x09' and cvm_value != "ONLINE PIN":
@@ -2272,8 +2276,10 @@ def processTransaction(args):
 
                 # TEMPLATE E7: CONTACTLESS MAGSTRIPE TRANSACTION
                 if tlv.tagCount(0xE7):
+                    # Card Source
+                    TC_TransactionHelper.reportCardSource(tlv, log)
                     # Terminal Capabilites
-                    reportTerminalCapabilities(tlv)
+                    TC_TransactionHelper.reportTerminalCapabilities(tlv, log)
                     TC_TransactionHelper.vspDecrypt(tlv, tid, log)
                     TC_TransactionHelper.displayEncryptedTrack(tlv, log)
                     TC_TransactionHelper.displayHMACPAN(tlv, log)

@@ -302,6 +302,7 @@ def getValue(tag, value):
         tagValue = value[tagIndex+offset:tagIndex+offset+dataLen]
     return tagValue
 
+
 def displayEncryptedTrack(tlv, log):
     
   if (tlv.tagCount((0xFF, 0x7F))):
@@ -373,6 +374,7 @@ def displayHMACPAN(tlv, log):
     else:
         log.logwarning("HMAC PAN: NOT REPORTED")
 
+
 def displayWalletId(tlv):
     walletId = ''
     if tlv.tagCount((0xC6)):
@@ -383,5 +385,54 @@ def displayWalletId(tlv):
             dataLen = int(vas[vasIndex+6:vasIndex+8], 16) * 2
             walletId = vas[vasIndex+8:vasIndex+8+dataLen]
     return walletId
+
+
+def reportTerminalCapabilities(tlv, log):
+    if tlv.tagCount((0x9F, 0x33)):
+        termCaps = tlv.getTag((0x9F, 0x33))
+        if len(termCaps):
+            log.logwarning("TERMINAL CAPABILITIES:", hexlify(termCaps[0]).decode('ascii'))
+    else:
+        log.logwarning('TERMINAL CAPABILITIES: [UNKNOWN]')
+
+
+def reportCardSource(tlv, log):
+
+  if tlv.tagCount((0x9F,0x39)):
+    entryMode = tlv.getTag((0x9F, 0x39))
+    if len(entryMode):
+       entryMode = ord(entryMode[0])
+       #log.logerr('POS MODE=', entryMode)
+       switcher = {
+            145: "CLESS-MSR",           # HEX 0x91
+            144: "MSR",                 # HEX 0x90
+              8: "Amex Wallet",
+              7: "Contactless-ICR",
+              5: "Contact-ICR",
+              4: "OCR",
+              3: "Barcode",
+              1: "Manual",
+              0: "Unspecified"
+          }
+       entryMode_value = switcher.get(entryMode, "UNKNOWN ENTRY MODE")
+       print('')
+       log.logwarning('POS ENTRY MODE ______:', entryMode_value)
+       if entryMode == 7:
+        if tlv.tagCount((0xC6)):
+          vasTag = tlv.getTag((0xC6), TLVParser.CONVERT_HEX_STR)[0].upper()
+          #log.log('VAS TAG:', vasTag)
+          vasIdIndex = vasTag.find('DFC601')
+          if vasIdIndex != -1:
+            dataLen = int(vasTag[vasIdIndex+6:vasIdIndex+8], 16) * 2
+            vasId = vasTag[vasIdIndex+8:vasIdIndex+8+dataLen]
+            # vasId = NULL
+            if len(vasId) == 8 and vasId == '6E756C6C':
+              log.log('CARDSOURCE: CARD')
+            else:
+              log.log('CARDSOURCE: APP')
+        else:
+          log.logwarning('CARSOURECE: CARD')
+  else:
+    log.logwarning('POS ENTRY MODE: [UNKNOWN]')
 
 # -------------------------------------------------------------------------------------- #

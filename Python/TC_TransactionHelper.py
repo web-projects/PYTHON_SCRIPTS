@@ -114,12 +114,29 @@ def showTVRByte5Failures(log, bit):
     log.logerr('         [' + tvr_value + ']')
 
 
+def reportTerminalCapabilities(tlv, log):
+  appLabel = ''
+  if (tlv.tagCount(0x50)):
+    appLabel = tlv.getTag(0x50)[0]
+    if len(appLabel):
+      log.warning('APPLICATION:', appLabel.decode('ascii'))
+    
+  if tlv.tagCount((0x9F,0x33)):
+    termCaps = tlv.getTag((0x9F, 0x33))
+    if (len(termCaps)):
+        log.logerr("TERMINAL CAPABILITIES:", hexlify(termCaps[0]).decode('ascii')) 
+  else:
+    log.warning('TERMINAL CAPABILITIES: [UNKNOWN]')
+    
+  return appLabel
+
+
 def reportCardSource(tlv, log):
-  if tlv.tagCount((0x9F, 0x39)):
+  if tlv.tagCount((0x9F,0x39)):
     entryMode = tlv.getTag((0x9F, 0x39))
     if len(entryMode):
        entryMode = ord(entryMode[0])
-       log.logerr('MODE=', entryMode)
+       #log.logerr('POS MODE=', entryMode)
        switcher = {
             145: "CLESS-MSR",           # HEX 0x91
             144: "MSR",                 # HEX 0x90
@@ -133,7 +150,7 @@ def reportCardSource(tlv, log):
           }
        entryMode_value = switcher.get(entryMode, "UNKNOWN ENTRY MODE")
        print('')
-       log.warning('POS ENTRY MODE:', entryMode_value)
+       log.warning('POS ENTRY MODE ______:', entryMode_value)
        if entryMode == 7:
         if tlv.tagCount((0xC6)):
           vasTag = tlv.getTag((0xC6), TLVParser.CONVERT_HEX_STR)[0].upper()
@@ -150,7 +167,7 @@ def reportCardSource(tlv, log):
         else:
           log.warning('CARSOURECE: CARD')
   else:
-    log.warning('POS ENTRY MODE: UNKNOWN')
+    log.warning('POS ENTRY MODE: [UNKNOWN]')
 
 
 def getValue(tag, value):
