@@ -92,6 +92,7 @@ CONTINUE_REQUEST_AAC = [(0xC0), [0x00]]  # Online (00)
 CONTINUE_REQUEST_TC = [(0xC0), [0x01]]  # Offline (Z3)
 
 ISOFFLINE = AUTHRESPONSECODE[1] == [0x5A, 0x33]
+IS_PIN_BYPASSED = False
 
 # AMEX TESTS
 AMEX_CLESS_CMV_REQ = b'\x00\x00\x00\x00\x15\x01'
@@ -523,8 +524,9 @@ def OnlinePinTransaction(tlv, tid, cardState, continue_tpl, bypassSecongGen=Fals
     nextstep = -1
     if status == 0x9f41:
         nextstep = 2
-        processPinBypass()
-
+        #processPinBypass()
+        log.warning('PIN BYPASSED')
+        
     if (cardState == EMV_CARD_INSERTED):       
         removeEMVCard()
 
@@ -548,9 +550,14 @@ def OnlinePinInTemplateE6(tlv, cardState, continue_tpl):
 
     global OnlineEncryptedPIN, OnlinePinKSN
     global HOST_ID, KEYSET_ID
+    global IS_PIN_BYPASSED
 
     log.log('Online PIN: retrieving PINBLOCK ---------------------------------------------')
     log.log('HOST_ID=' + str(HOST_ID) + ', KEY_SLOT=' + str(KEYSET_ID))
+    
+    if IS_PIN_BYPASSED:
+      log.warning('PIN BYPASS IN EFFECT...')
+      return -1
     
     # DFED0D
     # Flags for the entry. The following bits are checked:
@@ -737,7 +744,7 @@ def processMagstripeFallback(tid):
                 magState = MagstripeCardState(tlv)
                 if magState == ERROR_UNKNOWN_CARD or magState == MAGSTRIPE_TRACKS_AVAILABLE:
                      break
-            log.log('Ignoring unsolicited packet ', tlv)
+            log.log('PROCESS MSR: ignoring unsolicited packet ', tlv)
             continue
             
     if MagstripeCardState(tlv) == MAGSTRIPE_TRACKS_AVAILABLE:
@@ -844,6 +851,7 @@ def sendFirstGenAC(tlv, tid):
     return continue_tpl
     
 def sendSecondGenAC(tlv, tid):
+    global IS_PIN_BYPASSED
 
     log.log("CONTINUE TRANSACTION: GenAC2 -----------------------------------------------------------------------------")
     
@@ -861,6 +869,10 @@ def sendSecondGenAC(tlv, tid):
       #ISSUER_AUTH_DATA,                                                   # Authentication Data
       QUICKCHIP_ENABLED
     ]
+    
+    if IS_PIN_BYPASSED:
+      continue_trans_tag.append([(0xDF, 0xA2, 0x0A), [0x01]])
+      
     continue2_tpl = (0xE0, continue_trans_tag )
 
     # If we get here, we received Online Request. Continue with positive response. 
@@ -952,7 +964,7 @@ def applicationSelectionAutomatic(tlv):
 # EMV transaction
 def processEMV(tid):
 
-    global AMOUNT, DATE, TIME, OFFLINERESPONSE, AMTOTHER, SIGN_RECEIPT, EMV_VERIFICATION
+    global AMOUNT, DATE, TIME, OFFLINERESPONSE, AMTOTHER, SIGN_RECEIPT, EMV_VERIFICATION, IS_PIN_BYPASSED
 
     transaction_counter = b'\x00\x01'
 
@@ -1015,7 +1027,7 @@ def processEMV(tid):
                 log.log('Multi application card! - continue processing...')
                 continue
             else:
-                log.log('Ignoring unsolicited packet ', tlv)
+                log.log('PROCESS EMV[1]: ignoring unsolicited packet', tlv)
                 continue
         else:
         
@@ -1074,7 +1086,15 @@ def processEMV(tid):
                 hasPINEntry = True
                 continue
             else:
-                log.log('Ignoring unsolicited packet ', tlv)
+                if buf[0][0] == 0xe6:
+                  log.log('E6 PAYLOAD _:', bytes(buf[0]))
+                  tagC3Value = TC_TransactionHelper.getValue('c3', hexlify(buf[0]).decode('ascii'))
+                  log.log('TAG C3 VALUE:', tagC3Value)
+                  if tagC3Value == '0e':
+                    IS_PIN_BYPASSED = True
+                    log.warning('OPERATOR SELECTED PINBYPASS')
+                else:
+                  log.log('PROCESS EMV[2]: ignoring unsolicited packet ', tlv)
                 continue
         else:
                     
