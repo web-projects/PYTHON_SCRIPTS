@@ -1,0 +1,4 @@
+putfile.py --file upload/idle/idle.html --rfile www/mapp/idle.html --serial COM
+
+
+NOTE: VIPA must be restared to execute change (TC_reset_device_extended.py)

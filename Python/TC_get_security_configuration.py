@@ -147,7 +147,6 @@ def GetSecurityConfiguration():
         ksn_ade_slot = hexlify(ksn_val).decode('utf-8').upper()
     else:
         log.logerr("NO ADE KEY REPORTED")
-        
 
     # ADE IV
     ksn_ade_iv = ''
@@ -172,7 +171,7 @@ def GetSecurityConfiguration():
     log.warning("ADE HOST ID_:", str(ade_host_id))
     log.warning("KEYSET ID __:", str(ade_keyset_id))
     log.logerr    ("ADE SRED KSN:", ksn_ade_slot)
-    log.log("ADE SRED IV :", ksn_ade_iv)
+    log.attention("ADE SRED IV :", ksn_ade_iv)
 
     # SRED KSN
     tag_ksn_data = (0xDF, 0xDF, 0x11)

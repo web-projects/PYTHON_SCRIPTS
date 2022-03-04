@@ -222,8 +222,19 @@ import re
 # 1. Added action 'void2' to void transactions
 # execute: 
 # TC_transtest_all_autoselect_EMV.py --serial COM25   --custid 1117600 --password ipa1234 --action void --transid 097-0000094712 --transaction_menu n --device_pinpad_capable y --amount 200 --validateAmount n
-VERSION_LBL = '1.0.0.38'
-
+#VERSION_LBL = '1.0.0.38'
+#
+# 1. Added action 'void2' to void transactions
+# execute: 
+# TC_transtest_all_autoselect_EMV.py --serial COM25   --custid 1117600 --password ipa1234 --action void --transid 097-0000094712 --transaction_menu n --device_pinpad_capable y --amount 200 --validateAmount n
+#
+#VERSION_LBL = '1.0.0.39'
+#
+# 1. Added emv_kernel_version parameter to transaction output
+#
+VERSION_LBL = '1.0.0.40'
+#
+# 1. Added emv_kernel_version for US Debit Common AID: A0000000980840
 #
 # ----------------------------------------------------------------------------------------------------------
 
@@ -259,7 +270,7 @@ VERSION_LBL = '1.0.0.38'
 # 0xFE - none (non-EMV) - "transaction_type_" is skipped
 
 TRANSACTION_TYPE = b'\x00'  # SALE TRANSACTION
-# TRANSACTION_TYPE = b'\x09'  # SALE WITH CASHBACK TRANSACTION - MTIP05-USM Test 08 Scenario 01f
+#TRANSACTION_TYPE = b'\x09'  # SALE WITH CASHBACK TRANSACTION - MTIP05-USM Test 08 Scenario 01f
 # TRANSACTION_TYPE = b'\x30'  # BALANCE INQUIRY
 # BALANCE INQUIRY - MTIP06_10_01_15A, MTIP06_12_01_15A
 ISBLINDREFUND = False
@@ -395,6 +406,11 @@ LIST_STYLE_SCROLL_CIRCULAR = 0x02
 EnableVASTransactions = False
 CLS_TRANSACTIONS = 0x21 if EnableVASTransactions else 0x01
 
+#----------------------------------------------------------------------------#
+# EMV Kernel Version Reporting
+EMV_KERNEL_CHECKSUM = ''
+EMV_L2_KERNEL_VERSION = ''
+EMV_CLESS_KERNEL_VERSION = ''
 
 # ---------------------------------------------------------------------------- #
 # UTILTIES
@@ -437,6 +453,7 @@ def AbortTransaction():
     return -1
 
 def ResetDevice():
+    global EMV_L2_KERNEL_VERSION
     # Send reset device
     # P1 - 0x00
     # perform soft-reset, clears all internal EMV collection data and returns Terminal ID,
@@ -444,7 +461,11 @@ def ResetDevice():
     conn.send([0xD0, 0x00, 0x00, 0x01])
     status, buf, uns = getAnswer()
     log.log('Device reset')
-    return buf
+    tlv = TLVParser(buf)
+    # L2 EMV Contact Kernel: after terminal reset
+    EMV_L2_KERNEL_VERSION = TC_TransactionHelper.GetEMVL2KernelVersion(tlv)
+    return tlv
+
 
 # Finalise the script, clear the screen
 def performCleanup():
@@ -978,7 +999,8 @@ def getPINEntry(tlv):
 def OnlinePinTransaction(tlv, cardState, continue_tpl, setattempts=0, bypassSecongGen=False):
     global TRANSACTION_TYPE, AMOUNT, PINLEN_MIN, PINLEN_MAX
     global HOST_ID, KEYSET_ID
-
+    global EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION
+    
     # AXP QC 032 REQUIRES 2nd GENERATE AC to report TAGS 8A and 9F27
     if cardState == EMV_CARD_INSERTED and bypassSecongGen == False:
         sendSecondGenAC(continue_tpl)
@@ -1051,8 +1073,14 @@ def OnlinePinTransaction(tlv, cardState, continue_tpl, setattempts=0, bypassSeco
                     if setattempts == 1 or attempts > 0:
                         TC_TCLink.SetProperties(args, log)
 
+                    # ONLINE PIN Kernel Reporting
+                    if EMV_CLESS_KERNEL_VERSION == '':
+                         # Card Source
+                        entryMode_value = TC_TransactionHelper.reportCardSource(tlv, log)
+                        EMV_CLESS_KERNEL_VERSION = TC_TransactionHelper.GetEMVContactlessKernelVersion(conn, tlv, entryMode_value)
+
                     # send to process online PIN entry
-                    response = TC_TCLink.processPINTransaction(encryptedPIN, ksn)
+                    response = TC_TCLink.processPINTransaction(encryptedPIN, ksn, EMV_CLESS_KERNEL_VERSION)
 
                     # Timeout Reversal (TOR): don't retry PIN entry
                     if response == "error":
@@ -1081,7 +1109,7 @@ def OnlinePinTransaction(tlv, cardState, continue_tpl, setattempts=0, bypassSeco
                     log.logwarning("TRANSACTION WITH PIN BYPASS...")
                     CVM_REQUIRED_SIG = [(0x9F, 0x34), b'\x1E\x03\x02']
                     TC_TCLink.saveEMVHEXMapTag((CVM_REQUIRED_SIG))
-                    response = TC_TCLink.processEMVTransaction()
+                    response = TC_TCLink.processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION)
                     log.log("PINBYPASS response: " + response)
                     break
             # force PIN bypass
@@ -1166,7 +1194,8 @@ def OnlinePinInTemplateE6():
                     ksnStr = bytes.fromhex(ksn).decode('utf-8')
                     ksn = "{:F>20}".format(ksnStr)
                 OnlinePinKSN = ksn
-
+                log.logwarning("PIN=" + OnlineEncryptedPIN + "|" + OnlinePinKSN)
+ 
     # send transaction online
     return 6
 
@@ -1206,6 +1235,7 @@ def getMSRTrack2ServiceCode(tlv):
                 return serviceCode
     return ''
 
+
 def setMSRTrack2DataAndExpiry(tlv, save=False):
     track2 = tlv.getTag((0xDF, 0xDB, 0x06))[0].hex()
     if len(track2):
@@ -1241,6 +1271,7 @@ def setFirstGenContinueTransaction():
     ]
 
     return (0xE0, continue_tran_tag)
+
 
 def sendFirstGenAC(tlv, tid):
     global APPLICATION_LABEL, EMV_VERIFICATION
@@ -1405,6 +1436,9 @@ def startContactless(preferredAID=''):
     # to process ARQ in First Generate AC
     if ISBALANCEINQUIRY:
         start_ctls_tag.append([(0x95), b'\x00\x00\x00\x00\x00'])
+
+    if TRANSACTION_TYPE == b'\x09':
+        start_ctls_tag.append([(0xC1), b'\x01'])
 
     if len(preferredAID):
         # Preferred Application selected
@@ -1603,7 +1637,7 @@ def cancelContactless():
 def processEMV(tid):
 
     global AMOUNT, DATE, TIME, OFFLINERESPONSE, AMTOTHER, SIGN_RECEIPT, EMV_VERIFICATION, TRANSACTION_TYPE
-    global OnlinePinContinueTPL
+    global OnlinePinContinueTPL, EMV_CLESS_KERNEL_VERSION
 
     transaction_counter = b'\x00\x01'
 
@@ -1790,8 +1824,11 @@ def processEMV(tid):
                 TC_TCLink.saveEMVData(tlv, 0xE4)
 
                 # Card Source
-                TC_TransactionHelper.reportCardSource(tlv, log)
+                entryMode_value = TC_TransactionHelper.reportCardSource(tlv, log)
 
+                if EMV_CLESS_KERNEL_VERSION == '':
+                    EMV_CLESS_KERNEL_VERSION = TC_TransactionHelper.GetEMVContactlessKernelVersion(conn, tlv, entryMode_value)
+                    
                 # check Terminal Capabilities reports correctly - CONTACTLESS WORKFLOW
                 TC_TransactionHelper.reportTerminalCapabilities(tlv, log)
 
@@ -1801,6 +1838,9 @@ def processEMV(tid):
                 log.logerr('CVM REQUESTED _______:', cvm_value)
                 print('')
                  
+                # TVR Status
+                TC_TransactionHelper.checkTVRStatus(tlv, log)
+                      
                 # if cvm_value == "ONLINE PIN":
                 #    hasPINEntry = getOnlinePIN(tlv)
                 #    if hasPINEntry:
@@ -1956,7 +1996,9 @@ def promptForSwipeCard():
 
 
 def TransactionVoid():
-    response = TC_TCLink.processEMVTransaction()
+    global EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION
+    
+    response = TC_TCLink.processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION)
     ### not getting 'approved'
     if response == "accepted":
         sleep(3)
@@ -1985,8 +2027,9 @@ def TransactionVoid():
 def processTransaction(args):
 
     global AMOUNT, DATE, TIME, ONLINE, OFFLINERESPONSE, AMTOTHER, DEVICE_UNATTENDED
-    global TRANSACTION_TYPE, ISBALANCEINQUIRY, FALLBACK_TYPE
+    global TRANSACTION_TYPE, ISBALANCEINQUIRY, FALLBACK_TYPE, ISVOIDTRANSACTION
     global OnlineEncryptedPIN, OnlinePinKSN, OnlinePinContinueTPL
+    global EMV_L2_KERNEL_VERSION, EMV_KERNEL_CHECKSUM,  EMV_CLESS_KERNEL_VERSION
 
     TC_TCLink.SetProperties(args, log, TRANSACTION_TYPE == b'\x09')
 
@@ -2006,9 +2049,8 @@ def processTransaction(args):
         return TransactionVoid()
 
     # RESET DEVICE [D0, 00]
-    buf = ResetDevice()
+    tlv = ResetDevice()
 
-    tlv = TLVParser(buf)
     tid = tlv.getTag((0x9F, 0x1E))
 
     if len(tid):
@@ -2033,6 +2075,18 @@ def processTransaction(args):
         deviceUnattended = ''
         log.logerr('Invalid DEVICE (or cannot determine TYPE)!')
 
+    # KERNEL LAST 4 BYTES
+    #log.log('BUF LEN =', len(buf[0]))
+    EMV_KERNEL_CHECKSUM = TC_TransactionHelper.GetEMVKernelChecksum(conn)
+
+    # SUMMARY REPORT
+    print('')
+    print('--------------------------------------------------')
+    log.logerr('KERNEL CHECKSUM: ' + EMV_KERNEL_CHECKSUM)
+    log.logerr('KERNEL EMV C-L2: ' + EMV_L2_KERNEL_VERSION)
+    #log.logerr('TARGET CLES-AID: ' + aidValue)
+    #log.logerr('KERNEL EMV CVER: ' + EMV_CLESS_KERNEL_VERSION)
+    
     # DISPLAY [D2 01]
     conn.send([0xD2, 0x01, 0x01, 0x01])
     status, buf, uns = getAnswer()
@@ -2202,8 +2256,11 @@ def processTransaction(args):
                 if tlv.tagCount(0xE4):
 
                     # Card Source
-                    TC_TransactionHelper.reportCardSource(tlv, log)
+                    entryMode_value = TC_TransactionHelper.reportCardSource(tlv, log)
                     
+                    if EMV_CLESS_KERNEL_VERSION == '':
+                        EMV_CLESS_KERNEL_VERSION = TC_TransactionHelper.GetEMVContactlessKernelVersion(conn, tlv, entryMode_value)
+
                     # Terminal Capabilites
                     TC_TransactionHelper.reportTerminalCapabilities(tlv, log)
 
@@ -2248,9 +2305,9 @@ def processTransaction(args):
                         if encrypted_pin == 0x02:
                             return OnlinePinTransaction(tlv, cardState, setFirstGenContinueTransaction())
 
-                        # offline PIN
-                        if encrypted_pin == 0x01:
-                            getPINEntry(tlv)
+                        # Plaintext PIN verification performed by ICC
+                        #if encrypted_pin == 0x01:
+                        #    getPINEntry(tlv)
 
                     # VAS Processing
                     if tlv.tagCount((0xC6)):
@@ -2277,7 +2334,11 @@ def processTransaction(args):
                 # TEMPLATE E7: CONTACTLESS MAGSTRIPE TRANSACTION
                 if tlv.tagCount(0xE7):
                     # Card Source
-                    TC_TransactionHelper.reportCardSource(tlv, log)
+                    entryMode_value = TC_TransactionHelper.reportCardSource(tlv, log)
+                    
+                    if EMV_CLESS_KERNEL_VERSION == '':
+                        EMV_CLESS_KERNEL_VERSION = TC_TransactionHelper.GetEMVContactlessKernelVersion(conn, tlv, entryMode_value)
+                        
                     # Terminal Capabilites
                     TC_TransactionHelper.reportTerminalCapabilities(tlv, log)
                     TC_TransactionHelper.vspDecrypt(tlv, tid, log)
@@ -2423,12 +2484,18 @@ def processTransaction(args):
                 conn.send([0xD2, 0x01, 0x02, 0x01])
                 sleep(3)
 
+        # Card Source
+        entryMode_value = TC_TransactionHelper.reportCardSource(tlv, log)
+
+        if EMV_CLESS_KERNEL_VERSION == '':
+            EMV_CLESS_KERNEL_VERSION = TC_TransactionHelper.GetEMVContactlessKernelVersion(conn, tlv, entryMode_value)
+                        
         # Check for Contact EMV Capture
         # print(">>> tranType", tranType, "ff7f", tlv.tagCount((0xFF,0x7F)))
         # print(">>> tranType", tranType)
         response = ""
         if tranType == 1:
-            response = TC_TCLink.processEMVTransaction()
+            response = TC_TCLink.processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION)
         # Check for swipe
         if tranType == 2:
             TC_TransactionHelper.displayEncryptedTrack(tlv, log)
@@ -2444,14 +2511,14 @@ def processTransaction(args):
             response = TC_TCLink.processCLessMagstripeTransaction()
         # Check for Offline approve/decline
         if tranType == 4:  # Should tags be captured for an Offline Decline case and sent to TCLink?
-            response = TC_TCLink.processEMVTransaction(ISBLINDREFUND)
+            response = TC_TCLink.processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION, ISBLINDREFUND)
         # Check for CLess
         if tranType == 5:
-            response = TC_TCLink.processEMVTransaction(ISBLINDREFUND)
+            response = TC_TCLink.processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION, ISBLINDREFUND)
         # online PIN transaction
         if tranType == 6:
-            log.log('PROCESS ONLINE PIN TRANSACTION: ------------------------------------------------------------------------')
-            response = TC_TCLink.processPINTransaction(OnlineEncryptedPIN, OnlinePinKSN)
+            log.log('PROCESS ONLINE PIN TRANSACTION: -------------------------------------------------------------------')
+            response = TC_TCLink.processPINTransaction(OnlineEncryptedPIN, OnlinePinKSN, EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION)
             log.log("PIN response: " + response)
             # should there be a retry after first pin entry failure?
             if response != "approved":
@@ -2484,7 +2551,7 @@ def processTransaction(args):
             response = TC_TCLink.processCreditTransaction()
 
         if tranType == 8:
-            response = TC_TCLink.processEMVTransaction(True)
+            response = TC_TCLink.processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION, True)
             removeEMVCard()
 
         # offline transaction

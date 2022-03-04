@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+    <body>      
+        
+        <!--CONTENT-->
+        <div class="content" style="height: 100%;
+                background-image:url("file:////C:/Python/upload/idle/atrium/idle.png");
+                background-repeat:no-repeat;
+                background-position:center;">
+            
+            <div class="alert">
+            <?ifexist TEMPLATE_IMG_QR
+                (center style="padding-top: 73px; padding-bottom: 5px;")
+                (?varhtml TEMPLATE_IMG_QR?)
+                (/center)
+            ?>
+
+            <?ifexist TEMPLATE_TEXT0 (div class="body_header")?>
+            <?textvar TEMPLATE_TEXT0 ?>
+            <?ifexist TEMPLATE_TEXT0 (/div)?>
+
+            <?ifexist TEMPLATE_TEXT1 (div class="body_message")?>
+            <?textvar TEMPLATE_TEXT1 ?>
+            <?ifexist TEMPLATE_TEXT1 (/div)?>
+
+            <?ifexist TEMPLATE_VAR0 (div class="content" style="height: 250px;display: table-cell;(?var text_style?)")?>
+            <?varhtml TEMPLATE_VAR0 ?>
+            <?ifexist TEMPLATE_VAR0 (/div)?>
+            </div>
+            
+        </div>
+        
+        <!--CANCEL ACTION-->
+
+    </body>
+</html>

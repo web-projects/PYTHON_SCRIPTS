@@ -358,7 +358,8 @@ def ResetDevice():
   status, buf, uns = getAnswer()
   log.logerr('DEVICE RESET COMPLETED ----------')
   return buf
-  
+
+
 # Finalise the script, clear the screen
 def performCleanup():
     # Clear screen
@@ -388,7 +389,12 @@ def getAnswer(ignoreUnsolicited = True, stopOnErrors = True):
         if uns and ignoreUnsolicited:
             log.log('Unsolicited packet detected: ', TLVParser(buf))
             continue
-        if status != 0x9000 and status != 0x9F36:
+        if (status != 0x9000 and status != 0x9F0D and status != 0x9F36 and 
+            status != 0x9F22 and status != 0x9F25 and status != 0x9F28 and 
+            status != 0x9F31 and status != 0x9F33 and status != 0x9F34 and 
+            status != 0x9F35 and status != 0x9F41 and status != 0x9F42 and 
+            status != 0x9F43
+        ):
             log.logerr('Pinpad reported error ', hex(status))
             if stopOnErrors:
                 performCleanup()
@@ -823,7 +829,8 @@ def sendFirstGenAC(tlv, tid):
                 continue_tran_tag.append(CONTINUE_REQUEST_TC)
             continue_tpl = (0xE0, continue_tran_tag)
             message = str(appLabels[0], 'iso8859-1')
-            displayMsg('* APPLICATION LABEL *\t' + message, 2)
+            if len(message):
+              displayMsg('* APPLICATION LABEL *\n\t' + message, 2)
         else:
           #Continue transaction
           continue_tran_tag = [
@@ -879,7 +886,7 @@ def sendSecondGenAC(tlv, tid):
     conn.send([0xDE, 0xD2, 0x00, 0x00], continue2_tpl)
 
     status, buf, uns = getEMVAnswer(True) # Ignore unsolicited automatically here
-    if status != 0x9000 and status != 0x9ff:
+    if status != 0x9000 and status != 0x9f22:
         log.logerr('Online Request has failed', hex(status))
         return -1
     
@@ -1010,7 +1017,9 @@ def processEMV(tid):
             if status == 0x9F28:
                 unsupported_card_index = unsupported_card_index + 1
                 if unsupported_card_index == 2:
-                  log.logerr("TECHNICAL FALLBACK --------------------------------------------------------")
+                  # empty candidate list
+                  log.warning("EMV FALLBACK TYPE: MSR --------------------------------------------------------")
+
                   return processMagstripeFallback(tid)
                 else:
                   displayMsg("\tUNSUPPORTED CARD\n\n\tREINSERT", 2)
@@ -1110,7 +1119,7 @@ def processEMV(tid):
                 # Terminal Capabilites
                 appLabel = TC_TransactionHelper.reportTerminalCapabilities(tlv, log)
                 if len(appLabel):
-                  displayMsg('\t*** APPLICATION ***\n\n\t' + appLabel.decode('ascii'), 3)
+                  displayMsg('\t*** APPLICATION ***\n\n\t' + appLabel.decode('iso8859-1'), 3)
 
                 # HMAC PAN
                 displayHMACPAN(tlv)
@@ -1120,6 +1129,9 @@ def processEMV(tid):
                 log.logerr('CVM REQUESTED ______:', cvm_value)
                 print('')
                 
+                # TVR Status
+                checkTVRStatus(tlv)
+                    
                 if cvm_value == "ONLINE PIN" or cvm_value == "ENCRYPTED BY ICC":
                     if hasPINEntry == True:
                         # expect Template E6 already collected PIN: retrieve PIN KSN/ENCRYPTED DATA
@@ -1216,8 +1228,10 @@ def displayEncryptedTrack(tlv):
         dataLen = int(sRED[ksnIndex+6:ksnIndex+8], 16) * 2
         ksn = sRED[ksnIndex+8:ksnIndex+8+dataLen]
         if len(ksn):
-          log.log('KSN: ' + ksn)
-      
+          log.log('KSN ______ : ' + ksn)
+          log.warning('BDK KEY ID :', ksn[4:10])
+          log.warning('BDK TRSM ID:', ksn[10:15])
+          
       # TAG DFDF12
       ivIndex = sRED.find('DFDF12')
       if ivIndex != -1:
@@ -1592,8 +1606,10 @@ def promptForCard():
 
 
 def checkTVRStatus(tlv):
+    found = False
     tvr = tlv.getTag((0x95))
     if len(tvr):
+      found = True
       print('')
       log.attention('TVR (TAG 95):', hexlify(tvr[0]))
       index = 1
@@ -1609,6 +1625,7 @@ def checkTVRStatus(tlv):
             TC_TransactionHelper.showTVRFailures(log, index, n + 1)
         index = index + 1
       print('')
+    return found
 
 
 def vipaVersion(tlv):
@@ -1726,7 +1743,7 @@ def processTransaction(args):
       ctls = initContactless()
     else:
       ctls = False
-    
+
     ###ctls = False
     if (cardState != EMV_CARD_INSERTED):
         if (ctls):
@@ -1759,7 +1776,7 @@ def processTransaction(args):
                 if tlv.tagCount(0x48):
                     log.log('Card read attempts', attempts)
                     if attempts == 1:
-                        log.log("MSR fallback in effect!")
+                        log.warning("EMV FALLBACK TYPE: TECHNICAL --------------------------------------------------------")
                         processMagstripeFallback(tid)
                         break
                     attempts = attempts + 1
@@ -1821,13 +1838,13 @@ def processTransaction(args):
                     # Terminal Capabilites
                     appLabel = TC_TransactionHelper.reportTerminalCapabilities(tlv, log)
                     if len(appLabel):
-                      displayMsg('\t*** APPLICATION ***\n\n\t' + appLabel.decode('ascii'), 3)
+                      displayMsg('\t*** APPLICATION ***\n\n\t' + appLabel.decode('iso8859-1'), 3)
                 
                     cvm_value = getCVMResult(tlv)
                     # NOT AN EROR, JUST EASIER TO FIND IN THE TERMINAL OUTPUT
                     log.logerr('CVM REQUESTED ______:', cvm_value)
                     print('')
-                      
+                
                     # decrypt transaction                
                     vspDecrypt(tlv, tid)
 

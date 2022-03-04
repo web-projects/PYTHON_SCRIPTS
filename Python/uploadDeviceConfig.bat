@@ -11,10 +11,16 @@
 @if "%2"=="UX" goto UX
 @if "%2"=="CAPK" goto CAPK
 @if "%2"=="TTQ" goto TTQ
+@if "%2"=="NOPIN" goto ATTENDEDNOPIN
 
 :: ICC CONFIGS - DEFAULTS TO ATTENDED
 :ENGAGE
 @set TARGER_DIR="upload\config\emv\ICC\attended"
+goto CONFIGS
+
+:: ICC CONFIGS - ATTENDEDNOPIN
+:ATTENDEDNOPIN
+@set TARGER_DIR="upload\config\emv\ICC\attendednopin"
 goto CONFIGS
 
 :UX
@@ -32,7 +38,7 @@ goto UPLOAD
 
 :: CAPK FILES
 :CAPK
-@set TARGER_DIR="upload\config\emv\ICC\capk"
+@set TARGER_DIR="upload\config\emv\ICC\capk\PROD"
 goto UPLOAD
 
 :: TTQ - MSD

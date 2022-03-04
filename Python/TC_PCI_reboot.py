@@ -135,8 +135,8 @@ if __name__ == '__main__':
     # validate reboot time
     if len(args.time) != 6 and len(args.time) > 0:
       log.logerr('INVALID TIME VALUE: ' + args.time)
-      log.log('DEFAULT TO: 140000')
-      args.time = '140000'
+      log.log('DEFAULT TO: 000000')
+      args.time = '000000'
       
     # validate timestamp
     if len(args.timestamp) != 14 and len(args.timestamp) > 0:

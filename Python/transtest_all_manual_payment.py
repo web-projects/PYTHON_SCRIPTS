@@ -154,7 +154,6 @@ def processManualEntry():
     
     # Customized title 'Enter Card Number'
     manual_entry_custom_tag = [
-      #[ (0xDF, 0xAA, 0x02), b'TEMPLATE_INPUT_TYPE' ],   [ (0xDF, 0xAA, 0x03), b'number' ],
       [ (0xDF, 0xAA, 0x02), b'TEMPLATE_INPUT_TYPE' ],   [ (0xDF, 0xAA, 0x03), b'text' ],
       [ (0xDF, 0xAA, 0x02), b'allowed_chars' ],         [ (0xDF, 0xAA, 0x03), b'0123456789' ],
       [ (0xDF, 0xAA, 0x02), b'input_precision' ],       [ (0xDF, 0xAA, 0x03), b'0' ],

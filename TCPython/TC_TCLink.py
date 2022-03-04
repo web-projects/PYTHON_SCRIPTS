@@ -381,6 +381,9 @@ def saveEMVData(tlv, template, isBlindRefund = False):
                         processingcode = 'debit'
                 except:
                     pass
+            elif tag[0] == (0x9F, 0x12):
+                print("APPLICATION PREFERRED NAME=", tag[1].hex().upper())      
+                
             emv_processing_code = 'credit'
             try:
                 if tag[0] in AID_TAGS:
@@ -447,8 +450,7 @@ def saveEMVHEXMapTag(tag, hexConversion=True):
     global EMV_TAGS, EMV_TAG_ASCII_MAP, EMV_TAGS_HEX_MAP
     try:
         if tag[0] in EMV_TAGS_HEX_MAP.keys():
-            EMV_TAGS[EMV_TAGS_HEX_MAP[tag[0]]] = tag[1].hex(
-            ).upper() if hexConversion else tag[1]
+            EMV_TAGS[EMV_TAGS_HEX_MAP[tag[0]]] = tag[1].hex().upper() if hexConversion else tag[1]
     except (KeyError):
         LOG.log(">>  EMV_TAGS skipped ", hexlify(
             bytearray(tag[0])), "=", hexlify(tag[1]))
@@ -622,7 +624,7 @@ def addEMVTagData(isBlindRefund):
         # "emv_8a_authorizationresponsecode" : "00", # 0xDE, 0xD2 continue command sends this tag
         # "emv_processingcode" : "credit",
         "emv_9f53_transactioncategorycode": "52",
-        "emv_kernel_version": "0488",   # TSYS
+        #"emv_kernel_version": "0488",   # TSYS
         "emv_9f1a_terminalcountrycode": "0840",
         # send date and time to avoid Do Not Honor decline
         "emv_9f21_transactiontime": timestr,
@@ -726,7 +728,7 @@ def processCLessMagstripeTransaction():
     return showTCLinkResponse()
 
 
-def processEMVTransaction(isBlindRefund = False):
+def processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION, isBlindRefund = False):
     global DEVICE_SERIAL, DEVICE_UNATTENDED, ENCRYPTED_TRACK_IV, ENCRYPTED_TRACK_KSN, ENCRYPTED_TRACK_DATA, EMV_TAGS
     global TRANSACTION_ID, ISVOID
     
@@ -749,11 +751,18 @@ def processEMVTransaction(isBlindRefund = False):
         tclink.PushNameValue("reftransid="+TRANSACTION_ID)
     elif ISVOID == False:
         tclink.PushNameValue("unattended="+DEVICE_UNATTENDED)
+        
     print(">> EMV: len(EMV_TAGS)", str(len(EMV_TAGS)))
     addEMVTagData(isBlindRefund)
     
+    if len(POS_ENTRY_MODE) > 0 and POS_ENTRY_MODE == 'contactless=y':
+        tclink.PushNameValue("emv_kernel_version="+EMV_CLESS_KERNEL_VERSION)
+    else:
+        tclink.PushNameValue("emv_kernel_version="+EMV_L2_KERNEL_VERSION)
+        
     # print("encryptedtrack="+"TVP|iv:"+ENCRYPTED_TRACK_IV+"|ksn:"+ENCRYPTED_TRACK_KSN+"|vipa:"+ENCRYPTED_TRACK_DATA)
-    #Sprint(">> EMV_TAGS", str(EMV_TAGS))
+    #print(">> EMV_TAGS", str(EMV_TAGS, 'iso8859-1'))
+    #print(">> EMV_TAGS", str(EMV_TAGS))
     tclink.Submit()
     
     if ISVOID == True:
@@ -762,7 +771,7 @@ def processEMVTransaction(isBlindRefund = False):
     return showTCLinkResponse()
 
 
-def processPINTransaction(encryptedPIN, ksn):
+def processPINTransaction(encryptedPIN, ksn, EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION):
     global DEVICE_SERIAL, DEVICE_UNATTENDED, ENCRYPTED_TRACK_IV, ENCRYPTED_TRACK_KSN, ENCRYPTED_TRACK_DATA, EMV_TAGS
     print("Encrypted pin/ksn", encryptedPIN, ksn)
     if len(encryptedPIN) and len(ksn):
@@ -774,6 +783,14 @@ def processPINTransaction(encryptedPIN, ksn):
     tclink.PushNameValue("aggregator1=L9XPR6")
     tclink.PushNameValue("device_serial="+DEVICE_SERIAL)
     tclink.PushNameValue("unattended="+DEVICE_UNATTENDED)
+    
+    if len(POS_ENTRY_MODE) > 0 and POS_ENTRY_MODE == 'contactless=y' and len(EMV_CLESS_KERNEL_VERSION):
+        tclink.PushNameValue("emv_kernel_version="+EMV_CLESS_KERNEL_VERSION)
+    elif len(EMV_L2_KERNEL_VERSION):
+        tclink.PushNameValue("emv_kernel_version="+EMV_L2_KERNEL_VERSION)
+    else:
+        tclink.PushNameValue("emv_kernel_version=0488")
+        
     print(">> EMV: len(EMV_TAGS)", str(len(EMV_TAGS)))
     addEMVTagData(False)
     tclink.Submit()
