@@ -32,6 +32,8 @@ def getAnswer(ignoreUnsolicited = True, stopOnErrors = True):
     return status, buf, uns
 
 def ResetDevice():
+    global EMV_L2_KERNEL_VERSION
+    
     # Send reset device
     # P1 - 0x00
     # perform soft-reset, clears all internal EMV collection data and returns Terminal ID,
@@ -63,7 +65,7 @@ def ResetDevice():
     tlv = TLVParser(buf)
     
     # L2 EMV Contact Kernel: after terminal reset
-    EMV_L2_KERNEL_VERSION = TC_TransactionHelper.GetEMVL2KernelVersion(tlv)
+    EMV_L2_KERNEL_VERSION = TC_TransactionHelper.GetEMVL2KernelVersion(tlv, log)
 
     return tlv
 
@@ -83,6 +85,8 @@ def ResetDevice():
 #     2FD4B4F1 6F1BBC4E 00C067C0 6D68B769
 #
 def processGetKernelVersion():
+    global EMV_L2_KERNEL_VERSION
+    
     req_unsolicited = conn.connect()
     if req_unsolicited:
         #Receive unsolicited

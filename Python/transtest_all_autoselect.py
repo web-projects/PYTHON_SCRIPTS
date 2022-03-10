@@ -994,7 +994,7 @@ def processEMV(tid):
          COUNTRY_CODE,                        # Country code
          [(0x9F,0x41), transaction_counter ], # transaction counter
          [(0xDF,0xA2,0x18), b'\x00'],         # pin entry style
-         [(0xDF,0xA2,0x14), b'\x01'],         # Suppress Display
+         #[(0xDF,0xA2,0x14), b'\x01'],         # Suppress Display
          [(0xDF,0xA2,0x04), b'\x01']          # Application selection using PINPad
          #[(0xDF, 0xDF, 0x0D), b'\x02']       # Don't force transaction online
     ]
@@ -1147,6 +1147,8 @@ def processEMV(tid):
                 log.log("Transaction declined offline")
                 # encrypted track
                 displayEncryptedTrack(tlv)
+                # TVR status
+                checkTVRStatus(tlv)
                 return 2
                 
             break

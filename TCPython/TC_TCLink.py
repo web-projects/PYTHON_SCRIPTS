@@ -122,7 +122,7 @@ EMV_TAG_ASCII_MAP = {
     (0x50, ): 'emv_50_applicationlabel',
     (0x5F, 0x20): 'name',
     # 20201110: FDRC analyst requests not to send this tag
-    # ( 0x8A, ) : 'emv_8a_authorizationresponsecode',
+    #(0x8A, ): 'emv_8a_authorizationresponsecode',
     (0x9F, 0x12): 'emv_9f12_applicationpreferredname',
     (0x9F, 0x1E): 'emv_9f1e_interfacedeviceserialnumber',
     (0x9F, 0x6B): 'emv_9f6b_track2mc'
@@ -324,7 +324,7 @@ def saveCardData(tlv):
             ENCRYPTED_TRACK_DATA = vsp_tlv.getTag((0xDF, 0xDF, 0x10))[0].hex().upper()
 
 # Capture/update EMV data values
-def saveEMVData(tlv, template, isBlindRefund = False):
+def saveEMVData(tlv, template, isCashback, isBlindRefund = False):
     global LOG_INTERNAL_DATA, LOG
     global EMV_TAGS, POS_ENTRY_MODE, EMV_PROCESSING_CODE
     global PLATFORM, AID_TAGS, AID_LISTS, FLOOR_LIMIT_EXCEEDED, CVM_LIMIT_EXCEEDED, CVM_ISBELOW_LIMIT
@@ -398,15 +398,21 @@ def saveEMVData(tlv, template, isBlindRefund = False):
                     if platform not in AID_LISTS.keys():
                         platform = 'default'
                     #print(">>   Found", str(tag[0]), "in AID_TAGS with value", aid_value, "with platform", platform)
-                    for debit_aid in AID_LISTS[platform]['debitAidList']:
-                        if debit_aid == aid_value:
-                            emv_processing_code = 'debit'
-                            break
-                        #print("debit_aid", str(debit_aid), "no match for aid_value", str(aid_value))
-                    for credit_aid in AID_LISTS[platform]['creditAidList']:
-                        if credit_aid == aid_value:
-                            emv_processing_code = 'credit'
-                            break
+                    if isCashback:
+                        for debit_aid in AID_LISTS[platform]['cashbackAidList']:
+                            if debit_aid == aid_value:
+                                emv_processing_code = 'debit'
+                                break                        
+                    else:
+                        for debit_aid in AID_LISTS[platform]['debitAidList']:
+                            if debit_aid == aid_value:
+                                emv_processing_code = 'debit'
+                                break
+                            #print("debit_aid", str(debit_aid), "no match for aid_value", str(aid_value))
+                        for credit_aid in AID_LISTS[platform]['creditAidList']:
+                            if credit_aid == aid_value:
+                                emv_processing_code = 'credit'
+                                break
                         #print("credit_aid", str(credit_aid), "no match for aid_value", str(aid_value))
                     print(">> processing code", emv_processing_code)
                     if len(emv_processing_code) > 0:

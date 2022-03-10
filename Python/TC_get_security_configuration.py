@@ -121,6 +121,7 @@ def GetSecurityConfiguration():
         check_status_error(status)
 
     #Send reset device
+    print('RESET DEVICE -----------------------------')
     conn.send([0xD0, 0x00, 0x00, 0x01])
     status, buf, uns = getAnswer()
     tlv = TLVParser(buf)

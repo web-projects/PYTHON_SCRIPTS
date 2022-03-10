@@ -11,7 +11,9 @@ from binascii import hexlify, unhexlify, b2a_hex
 from testharness.tlvparser import TLVParser
 from testharness.utility import check_status_error
 
+# ---------------------------------------------------------------------------- #
 # Contactless Kernel Version
+# ---------------------------------------------------------------------------- #
 AID_LISTS = {
   'firstdatarapidconnect': {
     'amexCardAidList': [
@@ -21,13 +23,22 @@ AID_LISTS = {
       'A0000001523010', 'DK' 
     ],
     'jcbCardAidList': [
-      'A0000000651010', 'KK' 
+      'A0000000651010', 'JK' 
     ],    
     'masterCardAidList': [
       'A0000000041010', 'MK' 
     ],
-    'visaCardAidList': [
+    'maestroCardAidList': [
+        'A0000000043060', 'MK'
+    ],
+    'USmaestroCardAidList': [
+        'A0000000042203', 'MK'
+    ],
+       'visaCardAidList': [
       'A0000000031010', 'VK' 
+    ],
+      'visaUSDebitCardAidList': [
+      'A0000000980840', 'VK' 
     ]
   }
 }
@@ -68,7 +79,7 @@ def GetEMVKernelChecksum(conn):
     return kernelChecksum
     
 
-def GetEMVL2KernelVersion(tlv):
+def GetEMVL2KernelVersion(tlv, log):
   kernelValue = 'NOT FOUND'
   l2kernelTag  = tlv.getTag((0xDF, 0x81, 0x06))
   index = 0
@@ -76,7 +87,7 @@ def GetEMVL2KernelVersion(tlv):
     if value == b'ADK_EMV_CT_Kern':
       kernelTagValue  = tlv.getTag((0xDF, 0x81, 0x07))[index]
       kernelValue = str(kernelTagValue, 'iso8859-1')
-      #log.log('L2 KERNEL:', kernelValue)
+      log.log('L2 KERNEL:', kernelValue)
       break;
     index = index + 1
   return kernelValue

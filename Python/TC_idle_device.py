@@ -35,7 +35,22 @@ def getAnswer(ignoreUnsolicited = True, stopOnErrors = True):
                 exit(-1)
         break
     return status, buf, uns
+
+
+def closeContactlessReader():
+    # get current contactless status
+    # P1
+    # Bit 3 - Retrieve device initialization status (tag DFC023)
+    conn.send([0xC0, 0x00, 0x08, 0x00])
+    status, buf, uns = getAnswer(False)
     
+    tlv = TLVParser(buf)
+    if tlv.tagCount((0xDF, 0xC0, 0x23)) == 1:
+      log.log('Closing Contactless reader')
+      conn.send([0xC0, 0x02, 0x00, 0x00])
+      status, buf, uns = getAnswer(False) # Get unsolicited
+
+
 #
 # Main function
 def processReset():
@@ -50,7 +65,10 @@ def processReset():
    conn.send([0xD0, 0xFF, 0x00, 0x00])
    log.log('*** ABORT CURRENT COMMAND ***')
    status, buf, uns = getAnswer()        
-   
+
+   # close cless reader
+   closeContactlessReader()
+
    #Reset display - regardless of tx type
    conn.send([0xD2, 0x01, 0x01, 0x00])
    log.log('*** RESET DISPLAY ***')

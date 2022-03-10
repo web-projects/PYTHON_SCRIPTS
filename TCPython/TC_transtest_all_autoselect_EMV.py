@@ -232,9 +232,13 @@ import re
 #
 # 1. Added emv_kernel_version parameter to transaction output
 #
-VERSION_LBL = '1.0.0.40'
+#VERSION_LBL = '1.0.0.40'
 #
 # 1. Added emv_kernel_version for US Debit Common AID: A0000000980840
+#
+VERSION_LBL = '1.0.0.41'
+#
+# 1. Cashback processing as DEBIT instead of CREDIT
 #
 # ----------------------------------------------------------------------------------------------------------
 
@@ -271,8 +275,9 @@ VERSION_LBL = '1.0.0.40'
 
 TRANSACTION_TYPE = b'\x00'  # SALE TRANSACTION
 #TRANSACTION_TYPE = b'\x09'  # SALE WITH CASHBACK TRANSACTION - MTIP05-USM Test 08 Scenario 01f
-# TRANSACTION_TYPE = b'\x30'  # BALANCE INQUIRY
-# BALANCE INQUIRY - MTIP06_10_01_15A, MTIP06_12_01_15A
+#TRANSACTION_TYPE = b'\x30'  # BALANCE INQUIRY
+#BALANCE INQUIRY - MTIP06_10_01_15A, MTIP06_12_01_15A
+ISCASHBACK = TRANSACTION_TYPE == b'\x09'
 ISBLINDREFUND = False
 ISBALANCEINQUIRY = TRANSACTION_TYPE == b'\x30'
 AMOUNTFORINQUIRY = b'\x00\x00\x00\x00\x00\x00'
@@ -1059,7 +1064,7 @@ def OnlinePinTransaction(tlv, cardState, continue_tpl, setattempts=0, bypassSeco
                         ksnStr = bytes.fromhex(ksn).decode('utf-8')
                         ksn = "{:F>20}".format(ksnStr)
                     displayMsg('Processing ...')
-                    TC_TCLink.saveEMVData(tlv, 0xE4)
+                    TC_TCLink.saveEMVData(tlv, 0xE4, ISCASHBACK)
 
                     # sale with cashback requires ONLINE ENCRYPTED PIN in TAG 9F34
                     if TRANSACTION_TYPE == b'\x09':
@@ -1662,7 +1667,8 @@ def processEMV(tid):
         # When DFDF0D is provided with value 2, transaction is not forced online.
         # When DFDF0D is provided with value 3, transaction is forced online and TVR byte 4 bit 4 is not set.
         start_trans_tag.append([(0xDF, 0xDF, 0x0D), b'\x01'])
-
+        log.log("START TRANSACTION: FORCED ONLINE ????????????????????????????????????")
+        
     start_templ = (0xE0, start_trans_tag)
 
     # IPA5 transaction sequence counter
@@ -1720,7 +1726,7 @@ def processEMV(tid):
                 # TC_TCLink.saveCardData(tlv)
                 # print(">> first data", str(tlv))
                 # if tlv.tagCount(0xE2):
-                #    TC_TCLink.saveEMVData(tlv,0xE2)
+                #    TC_TCLink.saveEMVData(tlv,0xE2, ISCASHBACK)
 
             break
 
@@ -1804,7 +1810,7 @@ def processEMV(tid):
             # validate this is necessary: tags missing 8A and 9F27 in card log
             if tlv.tagCount(0xE0):
                 if ISOFFLINE:
-                    TC_TCLink.saveEMVData(tlv, 0xE0)
+                    TC_TCLink.saveEMVData(tlv, 0xE0, ISCASHBACK)
 
                 if tlv.tagCount((0x9F, 0x34)) >= 1:
 
@@ -1821,7 +1827,7 @@ def processEMV(tid):
 
             if tlv.tagCount(0xE4):
 
-                TC_TCLink.saveEMVData(tlv, 0xE4)
+                TC_TCLink.saveEMVData(tlv, 0xE4, ISCASHBACK)
 
                 # Card Source
                 entryMode_value = TC_TransactionHelper.reportCardSource(tlv, log)
@@ -1886,7 +1892,7 @@ def processEMV(tid):
                 if ISBLINDREFUND:
                     log.log("Transaction is blind refund")
                     TC_TCLink.saveCardData(tlv)
-                    TC_TCLink.saveEMVData(tlv, 0xE3, True)
+                    TC_TCLink.saveEMVData(tlv, 0xE3, ISCASHBACK, True)
                     # dynamic validation for MasterCard above floor limit and CVM
                     if tlv.tagCount((0x84)):
                         if  tlv.tagCount((0x95)):
@@ -1902,6 +1908,10 @@ def processEMV(tid):
             if tlv.tagCount(0xE5):
                 log.logerr('TRANSACTION DECLINED OFFLINE')
                 displayMsg("DECLINED: OFFLINE", 2)
+                
+                # TVR Status
+                TC_TransactionHelper.checkTVRStatus(tlv, log)
+                 
                 # M-TIP10 Test 01 Scenario 01f – Offline decline : Analyst wants receipt to be provided for the test case
                 if tlv.tagCount((0x5F, 0x20)):
                     cardholderName = tlv.getTag((0x5F, 0x20))[0]
@@ -1909,7 +1919,7 @@ def processEMV(tid):
                         cardholderName = str(cardholderName, 'iso8859-1')
                         if cardholderName == "MTIP10 MCD 13A":
                             TC_TCLink.saveCardData(tlv)
-                            TC_TCLink.saveEMVData(tlv, 0xE5)
+                            TC_TCLink.saveEMVData(tlv, 0xE5, ISCASHBACK)
                             return 2
                 return -1
 
@@ -1948,7 +1958,7 @@ def processEMV(tid):
             # save continue tpl in case of PIN retry
             OnlinePinContinueTPL = continue_tpl
 
-        TC_TCLink.saveEMVData(tlv, 0xE4)
+        TC_TCLink.saveEMVData(tlv, 0xE4, ISCASHBACK)
 
         return 3
 
@@ -1962,7 +1972,7 @@ def processEMV(tid):
             # expect Template E6 already collected PIN: retrieve PIN KSN/ENCRYPTED DATA
             if len(OnlineEncryptedPIN) == 0 or len(OnlinePinKSN) == 0:
                 # save EMV Tags
-                TC_TCLink.saveEMVData(tlv, 0xE5)
+                TC_TCLink.saveEMVData(tlv, 0xE5, ISCASHBACK)
                 OnlinePinInTemplateE6()
             # save continue tpl in case of PIN retry
             OnlinePinContinueTPL = continue_tpl
@@ -2248,7 +2258,7 @@ def processTransaction(args):
                         TC_TransactionHelper.vspDecrypt(tlv, tid, log)
                         TC_TransactionHelper.displayEncryptedTrack(tlv, log)
                         TC_TransactionHelper.displayHMACPAN(tlv, log)
-                        TC_TCLink.saveEMVData(tlv, 0xE3, ISBLINDREFUND)
+                        TC_TCLink.saveEMVData(tlv, 0xE3, ISCASHBACK, ISBLINDREFUND)
                         tranType = 4
                     break
 
@@ -2278,7 +2288,7 @@ def processTransaction(args):
                     TC_TransactionHelper.vspDecrypt(tlv, tid, log)
                     TC_TransactionHelper.displayEncryptedTrack(tlv, log)
                     TC_TransactionHelper.displayHMACPAN(tlv, log)
-                    TC_TCLink.saveEMVData(tlv, 0xE4)
+                    TC_TCLink.saveEMVData(tlv, 0xE4, ISCASHBACK)
 
                     # ADDED 08312020. Extract 9f34 tag (online pin entry required?)
                     if tlv.tagCount((0x9F, 0x34)) >= 1:
@@ -2324,7 +2334,7 @@ def processTransaction(args):
                 # TEMPLATE E5: TRANSACTION DECLINED
                 if tlv.tagCount(0xE5):
                     tranType = 4
-                    TC_TCLink.saveEMVData(tlv, 0xE5)
+                    TC_TCLink.saveEMVData(tlv, 0xE5, ISCASHBACK)
                     log.logerr('TRANSACTION DECLINED OFFLINE')
                     # E2E CL 17: requires TO GO ONLINE
                     # performCleanup()
@@ -2345,7 +2355,7 @@ def processTransaction(args):
                     TC_TransactionHelper.displayEncryptedTrack(tlv, log)
                     TC_TransactionHelper.displayHMACPAN(tlv, log)
                     # Contactless MSD does not include EMV Payload
-                    # TC_TCLink.saveEMVData(tlv, 0xE7)
+                    # TC_TCLink.saveEMVData(tlv, 0xE7, ISCASHBACK)
                     processCtlsContinue()
                     tranType = 3
                     break
@@ -2484,10 +2494,9 @@ def processTransaction(args):
                 conn.send([0xD2, 0x01, 0x02, 0x01])
                 sleep(3)
 
-        # Card Source
-        entryMode_value = TC_TransactionHelper.reportCardSource(tlv, log)
-
         if EMV_CLESS_KERNEL_VERSION == '':
+            # Card Source
+            entryMode_value = TC_TransactionHelper.reportCardSource(tlv, log)
             EMV_CLESS_KERNEL_VERSION = TC_TransactionHelper.GetEMVContactlessKernelVersion(conn, tlv, entryMode_value)
                         
         # Check for Contact EMV Capture
@@ -2658,13 +2667,14 @@ if __name__ == '__main__':
             args.action = "credit2"
         else:
             args.action = "credit"
-
     # set balance inquiry in launch.json
-    if TRANSACTION_TYPE == b'\x30':
+    elif TRANSACTION_TYPE == b'\x30':
         args.action = "verify"
         ISBALANCEINQUIRY = True
         log.log('BALANCE INQUIRY? - TRANSACTION TYPE=' + hexlify(TRANSACTION_TYPE).decode('ascii'))
-
+    elif TRANSACTION_TYPE == b'\x09':
+        ISCASHBACK = True
+        
     # VOID TRANSACTION
     if args.action == 'void' or args.action == 'void2':
         transId = TC_TCLink.getTransIdFromFile()
