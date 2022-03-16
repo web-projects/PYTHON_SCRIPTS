@@ -346,6 +346,7 @@ AMTOTHER = b'\x00\x00\x00\x00\x00\x00'
 DATE = b'\x20\x10\x01'
 TIME = b'\x00\x00\x00'
 
+APPLICATION_SELECTION_POS = False
 APPLICATION_AID = ''
 APPLICATION_LABEL = ''
 APPLICATION_SELECTION = -1
@@ -1628,7 +1629,7 @@ def processEMV(tid):
 
     global AMOUNT, DATE, TIME, OFFLINERESPONSE, AMTOTHER, SIGN_RECEIPT, EMV_VERIFICATION, TRANSACTION_TYPE
     global OnlinePinContinueTPL, EMV_CLESS_KERNEL_VERSION
-    global APPLICATION_AID, APPLICATION_LABEL, APPLICATION_SELECTION
+    global APPLICATION_AID, APPLICATION_LABEL, APPLICATION_SELECTION, APPLICATION_SELECTION_POS
     
     transaction_counter = b'\x00\x01'
 
@@ -1641,10 +1642,10 @@ def processEMV(tid):
         [(0x9F, 0x21), TIME],
         CURRENCY_CODE,
         COUNTRY_CODE,
-        [(0x9F, 0x41), transaction_counter],    # transaction counter
-        [(0xDF, 0xA2, 0x18), b'\x00'],          # pin entry style
-        [(0xDF, 0xA2, 0x14), b'\x01'],          # Suppress Display
-        [(0xDF, 0xA2, 0x04), b'\x00']           # External Application Selection - value = 0x00
+        [(0x9F, 0x41), transaction_counter],                                    # transaction counter
+        [(0xDF, 0xA2, 0x18), b'\x00'],                                          # pin entry style
+        [(0xDF, 0xA2, 0x14), b'\x01'],                                          # Suppress Display
+        [(0xDF, 0xA2, 0x04), b'\x00' if APPLICATION_SELECTION_POS else b'\x01'] # External Application Selection (POS)
     ]
 
     if ONLINE == 'y': 
@@ -1703,38 +1704,40 @@ def processEMV(tid):
             tlv = TLVParser(buf)
 
             # AID Selection Prompt
-            if tlv.tagCount(0xE2):
-              if tlv.tagCount(0x50) > 1 and tlv.tagCount((0x9F, 0x06)) > 1:
-                #applicationSelection(tlv)
-                #continue
-                # has operator made a choice already?
-                if APPLICATION_SELECTION != -1:
-                    log.logwarning('POS DECISION MADE =============================================================')
-                    applicationSelectionWithChoice()
-                    continue
-                log.logwarning('POS DECISION REQUIRED =============================================================')
-                AbortTransaction()
-                APPLICATION_SELECTION = TC_TransactionHelper.ApplicationSelection(conn)
-                log.log("USER SELECTED:", APPLICATION_SELECTION)
-                if APPLICATION_SELECTION == -1:
-                    return -1
-                
-                # save selected application
-                appAIDs = tlv.getTag((0x9F, 0x06))  
-                appLabels = tlv.getTag(0x50)
-                if len(appAIDs) and len(appLabels):
-                    APPLICATION_AID   = [(0x9F, 0x06), bytearray(appAIDs[APPLICATION_SELECTION - 1])]
-                    APPLICATION_LABEL = [(0x50, ), bytearray(appLabels[APPLICATION_SELECTION - 1])]
+            if tlv.tagCount(0xE2) and tlv.tagCount(0x50) > 1 and tlv.tagCount((0x9F, 0x06)) > 1:
+                if APPLICATION_SELECTION_POS == True:
+                    # has operator made a choice already?
+                    if APPLICATION_SELECTION != -1:
+                        log.logwarning('POS DECISION MADE =============================================================')
+                        applicationSelectionWithChoice()
+                        continue
+                    log.logwarning('POS DECISION REQUIRED =============================================================')
+                    AbortTransaction()
+                    APPLICATION_SELECTION = TC_TransactionHelper.ApplicationSelection(conn)
+                    log.log("USER SELECTED:", APPLICATION_SELECTION)
+                    if APPLICATION_SELECTION == -1:
+                        return -1
+                    
+                    # save selected application
+                    appAIDs = tlv.getTag((0x9F, 0x06))  
+                    appLabels = tlv.getTag(0x50)
+                    if len(appAIDs) and len(appLabels):
+                        APPLICATION_AID   = [(0x9F, 0x06), bytearray(appAIDs[APPLICATION_SELECTION - 1])]
+                        APPLICATION_LABEL = [(0x50, ), bytearray(appLabels[APPLICATION_SELECTION - 1])]
 
-                #ResetDevice(0x00)
-                  
-                # change app selection request
-                #start_trans_tag.remove(start_trans_tag[-1])
-                #start_trans_tag.append([(0xDF,0xA2,0x04), b'\x01'])
-                  
-                # START TRANSACTION [DE D1]
-                conn.send([0xDE, 0xD1, 0x00, 0x00], start_templ)
-    
+                    #ResetDevice(0x00)
+                    
+                    # change app selection request
+                    #start_trans_tag.remove(start_trans_tag[-1])
+                    #start_trans_tag.append([(0xDF,0xA2,0x04), b'\x01'])
+                    
+                    # START TRANSACTION [DE D1]
+                    conn.send([0xDE, 0xD1, 0x00, 0x00], start_templ)
+                else:
+                    applicationSelection(tlv)
+                    log.logwarning('TERMINAL DECISION MADE =============================================================')
+
+                # continue with transaction after application selected
                 continue
 
             break
@@ -2524,7 +2527,7 @@ def processTransaction(args):
         if tranType == 1:
             response = TC_TCLink.processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION)
         # Check for swipe
-        if tranType == 2:
+        elif tranType == 2:
             TC_TransactionHelper.displayEncryptedTrack(tlv, log)
             choice = TC_TransactionHelper.selectCreditOrDebit(conn, log)
             # refunds don't need pin block
@@ -2534,16 +2537,16 @@ def processTransaction(args):
             conn.send([0xD2, 0x01, 0x02, 0x01])
             response = TC_TCLink.processMSRTransaction(OnlineEncryptedPIN, OnlinePinKSN, args.action == 'credit', ISBLINDREFUND)
         # Check for contactless magstripe
-        if tranType == 3:
+        elif tranType == 3:
             response = TC_TCLink.processCLessMagstripeTransaction()
         # Check for Offline approve/decline
-        if tranType == 4:  # Should tags be captured for an Offline Decline case and sent to TCLink?
+        elif tranType == 4:  # Should tags be captured for an Offline Decline case and sent to TCLink?
             response = TC_TCLink.processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION, ISBLINDREFUND)
         # Check for CLess
-        if tranType == 5:
+        elif tranType == 5:
             response = TC_TCLink.processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION, ISBLINDREFUND)
         # online PIN transaction
-        if tranType == 6:
+        elif tranType == 6:
             log.log('PROCESS ONLINE PIN TRANSACTION: -------------------------------------------------------------------')
             response = TC_TCLink.processPINTransaction(OnlineEncryptedPIN, OnlinePinKSN, EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION)
             log.log("PIN response: " + response)
@@ -2567,22 +2570,21 @@ def processTransaction(args):
                             nextstep = OnlinePinTransaction(tlv, cardState, OnlinePinContinueTPL, 1, True)
                             if nextstep == -1:
                                 response = ''
+                    removeEMVCard()
                 elif errorType == "cantconnect":
                     removeEMVCard()
             else:
                 # delay to complete
                 removeEMVCard()
         # CREDIT transaction
-        if tranType == 7:
+        elif tranType == 7:
             log.log('PROCESS CREDIT TRANSACTION: ------------------------------------------------------------------------')
             response = TC_TCLink.processCreditTransaction()
-
-        if tranType == 8:
+        elif tranType == 8:
             response = TC_TCLink.processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION, True)
             removeEMVCard()
-
         # offline transaction
-        if tranType == 0:
+        elif tranType == 0:
             response = "OFFLINE: " + OFFLINERESPONSE
 
         declinetype = ""
