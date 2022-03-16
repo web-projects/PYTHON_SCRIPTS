@@ -101,7 +101,6 @@ def loadBlackList(conn, log):
             return data.split()
     return ""
 
-
 def isPanBlackListed(conn, log, pan):
     BLACK_LIST = loadBlackList(conn, log)
     if len(BLACK_LIST):
@@ -110,7 +109,6 @@ def isPanBlackListed(conn, log, pan):
             if value[0:6] == pan[0:6] and value[12:16] == pan[12:16]:
                 return True
     return False
-
 
 # Convert int to BCD
 # From: https://stackoverflow.com/questions/57476837/convert-amount-int-to-bcd
@@ -122,7 +120,6 @@ def bcd2(value, length=0, pad='\x00'):
         ret = chr((ms4b << 4) + ls4b) + ret
     return pad * (length - len(ret)) + ret
 
-
 def bcd(value, length=0, pad=0):
     ret = [ ]
     while value:
@@ -132,7 +129,6 @@ def bcd(value, length=0, pad=0):
     while len(ret) < length:
         ret.insert(0, pad)
     return bytes(ret)
-
 
 # Converts data field to integer
 def getDataField(buf, conversion = CONVERT_STRING):
@@ -158,7 +154,6 @@ def getDataField(buf, conversion = CONVERT_STRING):
                 else: return idx0[ind]
     return '0'
 
-
 def vspIsEncrypted(tlv, log):
     vsp_tag_val = tlv.getTag((0xDF,0xDF,0x6F))
     if len(vsp_tag_val):
@@ -169,7 +164,6 @@ def vspIsEncrypted(tlv, log):
         else:
             log.log('VSP present, but transaction unencrypted!')
     return False
-
 
 def displayEncryptedTrack(tlv, log):
     if tlv.tagCount((0xFF, 0x7F)):
@@ -217,7 +211,6 @@ def displayEncryptedTrack(tlv, log):
                             
                     return True
     return False
-
 
 # Decrypts VSP - encrypted data
 def vspDecrypt(tlv, tid, log):
@@ -309,7 +302,6 @@ def vspDecrypt(tlv, tid, log):
             log.logerr('Cannot decrypt!')
             return False
 
-
 def getCVMResult(tlv):
     cvm_result = tlv.getTag((0x9F,0x34))[0]
     encrypted_pin = (cvm_result[0] & 0x0f)
@@ -323,7 +315,6 @@ def getCVMResult(tlv):
     }
     cvm_value = switcher.get(encrypted_pin, "UNKNOWN CVM TYPE")
     return cvm_value
-
 
 def getValue(tag, value):
     tagValue = ''
@@ -386,7 +377,6 @@ def displayEncryptedTrack(tlv, log):
             encryptionStatus = sRED[encryptionStatusIndex+8:encryptionStatusIndex+8+dataLen]
             if len(encryptionStatus):
                 log.log("ENCRYTION STATUS: " + encryptionStatus)
-        
 
 def displayHMACPAN(tlv, log):
     sRedTag = tlv.tagCount((0xFF, 0x7C))
@@ -416,7 +406,6 @@ def displayWalletId(tlv):
             walletId = vas[vasIndex+8:vasIndex+8+dataLen]
     return walletId
 
-
 def reportTerminalCapabilities(tlv, log):
     if tlv.tagCount((0x9F, 0x33)):
         termCaps = tlv.getTag((0x9F, 0x33))
@@ -424,7 +413,6 @@ def reportTerminalCapabilities(tlv, log):
             log.logwarning("TERMINAL CAPABILITIES:", hexlify(termCaps[0]).decode('ascii'))
     else:
         log.logwarning('TERMINAL CAPABILITIES: [UNKNOWN]')
-
 
 def reportCardSource(tlv, log):
 
@@ -468,7 +456,6 @@ def reportCardSource(tlv, log):
 
   return entryMode_value
 
-
 #--------------------------------------------------------------------------------------------------------------------#
 # EMV Contactless Kernel Version
 #--------------------------------------------------------------------------------------------------------------------#
@@ -504,7 +491,6 @@ def GetEMVKernelChecksum(conn):
       kernelChecksum = buf[0][24:].decode('utf-8').upper()
     return kernelChecksum
     
-
 def GetEMVL2KernelVersion(tlv):
   kernelValue = 'NOT FOUND'
   l2kernelTag  = tlv.getTag((0xDF, 0x81, 0x06))
@@ -517,7 +503,6 @@ def GetEMVL2KernelVersion(tlv):
       break;
     index = index + 1
   return kernelValue
-
 
 def GetEMVClessKernelIdentifier(aid):
     emvClessKernel = ''
@@ -534,7 +519,6 @@ def GetEMVClessKernelIdentifier(aid):
         break
     return emvClessKernel
 
-
 def PrintAllMEVClessKernelValues(tlv):
     if tlv.tagCount(0xE1) and tlv.tagCount((0xdf,0xc0,0x28)):
         emvVerTag = tlv.getTag((0xdf,0xc0,0x28), TLVParser.CONVERT_STR)[0]
@@ -542,7 +526,6 @@ def PrintAllMEVClessKernelValues(tlv):
         for line in emvVerTag.split(';'):
           tokens = line.split()
           print(tokens)
-
 
 def GetEMVClessKernelVersion(conn, aidValue):
     clessKernelVersion = '0488'
@@ -587,7 +570,6 @@ def GetEMVClessKernelVersion(conn, aidValue):
           
     return clessKernelVersion
 
-
 def GetEMVContactlessKernelVersion(conn, tlv, entryMode_value):
     if entryMode_value == 'CLESS-MSR' or entryMode_value == 'Contactless-ICR':
         aidTagValue = tlv.getTag((0x9F, 0x06))[0].hex().upper()
@@ -610,7 +592,6 @@ def showTVRFailures(log, index, bit):
     func, args = switcher.get(index, (None, None))
     if func is not None:
       return func(*args)
-
 
 def showTVRByte1Failures(log, bit):
     #log.log('TVR-Byte1-BIT =', bit)
@@ -646,7 +627,6 @@ def showTVRByte2Failures(log, bit):
     
     log.logerr('         [' + tvr_value + ']')
 
-
 def showTVRByte3Failures(log, bit):
     #log.log('TVR-Byte3-BIT =', bit)
     # Indicate TVR type
@@ -663,7 +643,6 @@ def showTVRByte3Failures(log, bit):
     tvr_value = switcher.get(bit, "UNKNOWN TVR TYPE")
     
     log.logerr('         [' + tvr_value + ']')
-
 
 def showTVRByte4Failures(log, bit):
     #log.log('TVR-Byte4-BIT =', bit)
@@ -682,7 +661,6 @@ def showTVRByte4Failures(log, bit):
     
     log.logerr('         [' + tvr_value + ']')
 
-
 def showTVRByte5Failures(log, bit):
     #log.log('TVR-Byte4-BIT =', bit)
     # Indicate TVR type
@@ -699,7 +677,6 @@ def showTVRByte5Failures(log, bit):
     tvr_value = switcher.get(bit, "UNKNOWN TVR TYPE")
     
     log.logerr('         [' + tvr_value + ']')
-
 
 def checkTVRStatus(tlv, log):
     found = False
@@ -722,5 +699,81 @@ def checkTVRStatus(tlv, log):
         index = index + 1
       print('')
     return found
+
+#----------------------------------------------------------
+# APPLICATION SELECTION
+#----------------------------------------------------------
+
+LIST_STYLE_SCROLL = 0x00
+LIST_STYLE_NUMERIC = 0x01
+LIST_STYLE_SCROLL_CIRCULAR = 0x02
+
+def ApplicationSelection(conn):
+  selected = -1
+  # Set data for request '''
+  c_tag = tagStorage()
+  c_tag.store( (0xDF, 0xA2, 0x12), LIST_STYLE_SCROLL )
+  #BUG: Unable to push the direct string not bytearray
+  c_tag.store((0xDF,0xA2,0x11), 'PROCESS AS')
+  c_tag.store((0xDF, 0xA2, 0x02), 0x01)
+  c_tag.store((0xDF, 0xA2, 0x03), b'1. Debit')
+  c_tag.store((0xDF, 0xA2, 0x02), 0x02)
+  c_tag.store((0xDF, 0xA2, 0x03), b'2. Credit')
+  # clear key inhibited
+  #c_tag.store((0xDF, 0xA2, 0x15), 0x00)
+
+  # Send request
+  conn.send([0xD2, 0x03, 0x00, 0x01] , c_tag.get())
+  
+  is_unsolicited = True
+  
+  # wait to response
+  while is_unsolicited:
+      status, buf, is_unsolicited = conn.receive()
+      check_status_error( status )
+
+  tlv = TLVParser(buf)
+  if tlv.tagCount((0xDF, 0xA2, 0x02)) == 1:
+    selection = tlv.getTag((0xDF, 0xA2, 0x02))[0]
+    selected = selection[0]
+
+  return selected
+
+def selectCreditOrDebit(conn, log):
+
+    SelectionType = {1: ["DEBIT"], 2: ["CREDIT"]}
+    # Set data for request
+    c_tag = tagStorage()
+    c_tag.store((0xDF, 0xA2, 0x12), LIST_STYLE_SCROLL)
+    # BUG: Unable to push the direct string not bytearray
+    c_tag.store((0xDF, 0xA2, 0x11), "PROCESS AS")
+
+    i = 1
+    for key in SelectionType:
+        c_tag.store((0xDF, 0xA2, 0x02), i)
+        c_tag.store((0xDF, 0xA2, 0x03), SelectionType[key][0])
+        i = i + 1
+
+    # Send request
+    conn.send([0xD2, 0x03, 0x00, 0x01], c_tag.get())
+    
+    # Wait for selection
+    status, buf, uns = conn.receive()
+
+    # default to SALE
+    choice = 1
+
+    # if user cancels, default to 'CREDIT' Transaction
+    if status == 0x9F43:
+        return choice
+
+    if status == 0x9000:
+        tlv = TLVParser(buf)
+        if tlv.tagCount((0xDF, 0xA2, 0x02)) == 1:
+            selection = tlv.getTag((0xDF, 0xA2, 0x02))[0]
+            choice = selection[0]
+    log.logwarning("PROCESS AS:", SelectionType[choice][0])
+    
+    return choice
 
 # -------------------------------------------------------------------------------------- #

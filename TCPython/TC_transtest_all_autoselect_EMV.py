@@ -346,7 +346,9 @@ AMTOTHER = b'\x00\x00\x00\x00\x00\x00'
 DATE = b'\x20\x10\x01'
 TIME = b'\x00\x00\x00'
 
+APPLICATION_AID = ''
 APPLICATION_LABEL = ''
+APPLICATION_SELECTION = -1
 
 # ---------------------------------------------------------------------------- #
 # ONLINE PIN VSS
@@ -471,14 +473,12 @@ def ResetDevice():
     EMV_L2_KERNEL_VERSION = TC_TransactionHelper.GetEMVL2KernelVersion(tlv)
     return tlv
 
-
 # Finalise the script, clear the screen
 def performCleanup():
     # DISPLAY [D2 01]
     conn.send([0xD2, 0x01, 0x01, 0x00])
     log.log('*** RESET DISPLAY ***')
     status, buf, uns = getAnswer(True, False)
-    # Disconnect
 
 def vsdSREDTemplateDebugger(tlv, tid):
     # print(">>> ff7f", tlv.tagCount((0xFF,0x7F)))
@@ -512,7 +512,6 @@ def vsdSREDTemplateDebugger(tlv, tid):
                 + '\\ndevice_serial=' + str(tid)
             )
 
-
 # Gets answer from the device, optionally ignoring unsolicited and stopping on errors
 def getAnswer(ignoreUnsolicited=True, stopOnErrors=True):
     while True:
@@ -540,11 +539,9 @@ def getAnswer(ignoreUnsolicited=True, stopOnErrors=True):
 def getEMVAnswer(ignoreUnsolicited=False):
     return getAnswer(ignoreUnsolicited, False)
 
-
 # ---------------------------------------------------------------------------- #
 # DEVICE CONNECTIVITY AND STATE
 # ---------------------------------------------------------------------------- #
-
 
 def startConnection():
     # instantiate connection
@@ -615,11 +612,9 @@ def stopMonitoringKeyPresses():
     log.log('*** STOP KEYBOARD MONITORING ***')
     status, buf, uns = getAnswer(False)
 
-
 # ---------------------------------------------------------------------------- #
 # TRANSACTION PROCESSING
 # ---------------------------------------------------------------------------- #
-
 
 def displayMsg(message, pause=0):
     # DISPLAY [D2, 01]
@@ -738,13 +733,34 @@ def applicationSelection(tlv):
     if sel >= 0:
         sel = sel - 1
         log.log('Selected ', sel)
-        app_sel_tags = [[(0x50), bytearray(appLabels[sel])], [(0x9F, 0x06), bytearray(appAIDs[sel])], ACQUIRER_ID]
+        app_sel_tags = [
+            [(0x50), bytearray(appLabels[sel])], 
+            [(0x9F, 0x06), bytearray(appAIDs[sel])], 
+            ACQUIRER_ID
+        ]
         app_sel_templ = (0xE0, app_sel_tags)
 
         log.log("CONTINUE TRANSACTION: AID CHOICE --------------------------------------------")
         # CONTINUE TRANSACTION [DE D2]
         conn.send([0xDE, 0xD2, 0x00, 0x00], app_sel_templ)
         log.log('App selected, waiting for response...')
+
+def applicationSelectionWithChoice():
+    global APPLICATION_AID, APPLICATION_LABEL, APPLICATION_SELECTION
+
+    if APPLICATION_SELECTION != -1:
+        if len(APPLICATION_AID) and len(APPLICATION_LABEL):
+            app_sel_tags = [
+                APPLICATION_AID, 
+                APPLICATION_LABEL,
+                ACQUIRER_ID
+            ]
+            app_sel_templ = (0xE0, app_sel_tags)
+
+            log.log("CONTINUE TRANSACTION: AID CHOICE --------------------------------------------")
+            # CONTINUE TRANSACTION [DE D2]
+            conn.send([0xDE, 0xD2, 0x00, 0x00], app_sel_templ)
+            log.log('App selected, waiting for response...')
 
 # Checks card status, based on device response
 def EMVCardState(tlv):
@@ -875,43 +891,6 @@ def processMagstripeFallback(tid):
         TC_TCLink.setDeviceFallbackMode(FALLBACK_TYPE)
     # We're done!
     return 5
-
-def selectCreditOrDebit():
-
-    SelectionType = {1: ["CREDIT"], 2: ["DEBIT"]}
-    # Set data for request
-    c_tag = tagStorage()
-    c_tag.store((0xDF, 0xA2, 0x12), LIST_STYLE_SCROLL)
-    # BUG: Unable to push the direct string not bytearray
-    c_tag.store((0xDF, 0xA2, 0x11), "TRANSACTION TYPE")
-
-    i = 1
-    for key in SelectionType:
-        c_tag.store((0xDF, 0xA2, 0x02), i)
-        c_tag.store((0xDF, 0xA2, 0x03), SelectionType[key][0])
-        i = i + 1
-
-    # Send request
-    conn.send([0xD2, 0x03, 0x00, 0x01], c_tag.get())
-    # Wait for selection
-    status, buf, uns = getAnswer()
-
-    # default to SALE
-    choice = 1
-
-    # if user cancels, default to 'CREDIT' Transaction
-    if status == 0x9F43:
-        return choice
-
-    if status == 0x9000:
-        tlv = TLVParser(buf)
-        if tlv.tagCount((0xDF, 0xA2, 0x02)) == 1:
-            selection = tlv.getTag((0xDF, 0xA2, 0x02))[0]
-            choice = selection[0]
-
-    log.logwarning("TRANSACTION TYPE:", SelectionType[choice][0])
-    return choice
-
 
 # ---------------------------------------------------------------------------- #
 # PIN Workflow
@@ -1220,11 +1199,9 @@ def processPinBypass():
     conn.send([0xDE, 0xD2, 0x00, 0x00], pinbypass_tpl)
     status, buf, uns = getAnswer(stopOnErrors=False)
 
-
 # ---------------------------------------------------------------------------- #
 # MSR Workflow
 # ---------------------------------------------------------------------------- #
-
 
 def getMSRTrack2ServiceCode(tlv):
     track2 = tlv.getTag((0xDF, 0xDB, 0x06))[0].hex()
@@ -1240,7 +1217,6 @@ def getMSRTrack2ServiceCode(tlv):
                 return serviceCode
     return ''
 
-
 def setMSRTrack2DataAndExpiry(tlv, save=False):
     track2 = tlv.getTag((0xDF, 0xDB, 0x06))[0].hex()
     if len(track2):
@@ -1255,11 +1231,9 @@ def setMSRTrack2DataAndExpiry(tlv, save=False):
                 if save == True:
                     TC_TCLink.saveMSRTrack2AndExpiry(track2, expiry)
 
-
 # ---------------------------------------------------------------------------- #
 # EMV Workflow
 # ---------------------------------------------------------------------------- #
-
 
 def setFirstGenContinueTransaction():
 
@@ -1277,13 +1251,17 @@ def setFirstGenContinueTransaction():
 
     return (0xE0, continue_tran_tag)
 
-
 def sendFirstGenAC(tlv, tid):
     global APPLICATION_LABEL, EMV_VERIFICATION
-
+    global APPLICATION_SELECTION
+    
     # allow for decision on offline decline when issuing 1st GenAC (DNA)
     EMV_VERIFICATION = 0x01
 
+    APPLICATION_AID   = ''
+    APPLICATION_LABEL = ''
+    panBlacklisted = False
+    
     # TEMPLATE E2 - DECISION REQUIRED
     # Should the device require a decision to be made it will return this template. The template could
     # contain one or more copies of the same data object with different value fields.
@@ -1298,18 +1276,25 @@ def sendFirstGenAC(tlv, tid):
             # This is app selection stuff
             appLabels = tlv.getTag(0x50)
             appAIDs = tlv.getTag((0x9F, 0x06))
-            # The terminal requests an ARQC in the 1st GENERATE AC Command.
-            # The card returns an AAC to the 1st GENERATE AC Command.
-            # The terminal does not send a 2nd GENERATE AC Command
-            # C0 defines if the card is: 00=blacklisted, 01=non-blacklisted
+            
+            if tlv.tagCount(0x50) == 1 and tlv.tagCount((0x9F, 0x06)) == 1:
+                APPLICATION_SELECTION = 1
+                
+            # set AID
+            log.logwarning("APPLICATION SELECTED:", APPLICATION_SELECTION)
+            APPLICATION_AID   = [(0x9F, 0x06), bytearray(appAIDs[APPLICATION_SELECTION - 1])]
+            APPLICATION_LABEL = [(0x50, ), bytearray(appLabels[APPLICATION_SELECTION - 1])]
+
             pan = tlv.getTag(0x5A)
             panBlacklisted = False
             if len(pan):
                 panBlacklisted = TC_TransactionHelper.isPanBlackListed(conn, log, b2a_hex(pan[0]))
-            APPLICATION_LABEL = [(0x50,), bytearray(appLabels[0])]
+
+            # The terminal requests an ARQC in the 1st GENERATE AC Command.
+            # The card returns an AAC to the 1st GENERATE AC Command.
+            # The terminal does not send a 2nd GENERATE AC Command
+            # C0 defines if the card is: 00=blacklisted, 01=non-blacklisted
             continue_tran_tag = [
-                APPLICATION_LABEL,
-                [(0x9F, 0x06), bytearray(appAIDs[0])],
                 [(0x9F, 0x02), AMOUNTFORINQUIRY if ISBALANCEINQUIRY else AMOUNT],
                 [(0x9F, 0x03), AMTOTHER],
                 CURRENCY_CODE,
@@ -1322,12 +1307,15 @@ def sendFirstGenAC(tlv, tid):
                 CONTINUE_REQUEST_AAC if (ISBALANCEINQUIRY or panBlacklisted) else CONTINUE_REQUEST_TC,  # TAG C0 object decision: AAC=00, TC=01
                 QUICKCHIP_ENABLED,
             ]
+            if len(APPLICATION_AID) and len(APPLICATION_LABEL):
+                continue_tran_tag.append(APPLICATION_AID)
+                continue_tran_tag.append(APPLICATION_LABEL)
             continue_tpl = (0xE0, continue_tran_tag)
             message = str(appLabels[0], 'iso8859-1')
             if tlv.tagCount((0x9F, 0x12)):
                 preferred = tlv.getTag((0x9F, 0x12))[0]
                 message = message + '\n\n\t* PREFERRED NAME *\n\t' + str(preferred, 'iso8859-1')
-            displayMsg('* APPLICATION LABEL *\n\t' + message, 1)
+            #displayMsg('* APPLICATION LABEL *\n\t' + message, 1)
             # save Application Label
             TC_TCLink.saveEMVASCIITag((APPLICATION_LABEL))
     else:
@@ -1393,7 +1381,6 @@ def saveEMVHexMapTags(tlv):
     amountOther = hexlify(bytearray(AMTOTHER))
     TC_TCLink.saveEMVHEXMapTag(((0x9F, 0x03), amountOther.decode('utf-8').upper()), False)
     TC_TCLink.printEMVHexTags()
-
 
 # ---------------------------------------------------------------------------- #
 # Contactless Workflow
@@ -1633,17 +1620,16 @@ def cancelContactless():
     # ctls still active
     return collision
 
-
 # ---------------------------------------------------------------------------- #
 # EMV Contact Workflow
 # ---------------------------------------------------------------------------- #
-
 
 def processEMV(tid):
 
     global AMOUNT, DATE, TIME, OFFLINERESPONSE, AMTOTHER, SIGN_RECEIPT, EMV_VERIFICATION, TRANSACTION_TYPE
     global OnlinePinContinueTPL, EMV_CLESS_KERNEL_VERSION
-
+    global APPLICATION_AID, APPLICATION_LABEL, APPLICATION_SELECTION
+    
     transaction_counter = b'\x00\x01'
 
     # Create localtag for transaction
@@ -1658,7 +1644,7 @@ def processEMV(tid):
         [(0x9F, 0x41), transaction_counter],    # transaction counter
         [(0xDF, 0xA2, 0x18), b'\x00'],          # pin entry style
         [(0xDF, 0xA2, 0x14), b'\x01'],          # Suppress Display
-        [(0xDF, 0xA2, 0x04), b'\x01']           # External Application Selection
+        [(0xDF, 0xA2, 0x04), b'\x00']           # External Application Selection - value = 0x00
     ]
 
     if ONLINE == 'y': 
@@ -1680,6 +1666,9 @@ def processEMV(tid):
     # -------------------------------------------------------------------------
     # START TRANSACTION [DE D1]
     conn.send([0xDE, 0xD1, 0x00, 0x00], start_templ)
+
+    # set default state
+    APPLICATION_SELECTION = -1
 
     while True:
         # sleep(1)
@@ -1715,18 +1704,38 @@ def processEMV(tid):
 
             # AID Selection Prompt
             if tlv.tagCount(0xE2):
-                if tlv.tagCount(0x50) > 1 and tlv.tagCount((0x9F, 0x06)) > 1:
-                    applicationSelection(tlv)
-                    # requestAIDChoice(tlv)
-                    # displayAidChoice(tlv)
+              if tlv.tagCount(0x50) > 1 and tlv.tagCount((0x9F, 0x06)) > 1:
+                #applicationSelection(tlv)
+                #continue
+                # has operator made a choice already?
+                if APPLICATION_SELECTION != -1:
+                    log.logwarning('POS DECISION MADE =============================================================')
+                    applicationSelectionWithChoice()
                     continue
+                log.logwarning('POS DECISION REQUIRED =============================================================')
+                AbortTransaction()
+                APPLICATION_SELECTION = TC_TransactionHelper.ApplicationSelection(conn)
+                log.log("USER SELECTED:", APPLICATION_SELECTION)
+                if APPLICATION_SELECTION == -1:
+                    return -1
+                
+                # save selected application
+                appAIDs = tlv.getTag((0x9F, 0x06))  
+                appLabels = tlv.getTag(0x50)
+                if len(appAIDs) and len(appLabels):
+                    APPLICATION_AID   = [(0x9F, 0x06), bytearray(appAIDs[APPLICATION_SELECTION - 1])]
+                    APPLICATION_LABEL = [(0x50, ), bytearray(appLabels[APPLICATION_SELECTION - 1])]
 
-                # Check for Contact EMV Capture
-                # print(">>> EMV Data 0 ff7f", tlv.tagCount((0xFF,0x7F)))
-                # TC_TCLink.saveCardData(tlv)
-                # print(">> first data", str(tlv))
-                # if tlv.tagCount(0xE2):
-                #    TC_TCLink.saveEMVData(tlv,0xE2, ISCASHBACK)
+                #ResetDevice(0x00)
+                  
+                # change app selection request
+                #start_trans_tag.remove(start_trans_tag[-1])
+                #start_trans_tag.append([(0xDF,0xA2,0x04), b'\x01'])
+                  
+                # START TRANSACTION [DE D1]
+                conn.send([0xDE, 0xD1, 0x00, 0x00], start_templ)
+    
+                continue
 
             break
 
@@ -1825,6 +1834,13 @@ def processEMV(tid):
                     if cvm_value == "SIGNATURE":
                         SIGN_RECEIPT = True
 
+
+            if tlv.tagCount(0xE2):
+                TC_TransactionHelper.vspDecrypt(tlv, tid, log)
+                TC_TransactionHelper.displayEncryptedTrack(tlv, log)
+                TC_TransactionHelper.displayHMACPAN(tlv, log)
+                TC_TCLink.saveEMVData(tlv, 0xE3, ISCASHBACK, ISBLINDREFUND)
+                        
             if tlv.tagCount(0xE4):
 
                 TC_TCLink.saveEMVData(tlv, 0xE4, ISCASHBACK)
@@ -1944,6 +1960,8 @@ def processEMV(tid):
 
         log.log("CONTINUE TRANSACTION: GenAC2 [TEMPLATE E4] ----------------------------------")
 
+        TC_TCLink.saveEMVData(tlv, 0xE4, ISCASHBACK)
+
         # -------------------------------------------------------------------------
         # 2nd GenAC
         tlv = sendSecondGenAC(continue_tpl)
@@ -1958,8 +1976,11 @@ def processEMV(tid):
             # save continue tpl in case of PIN retry
             OnlinePinContinueTPL = continue_tpl
 
-        TC_TCLink.saveEMVData(tlv, 0xE4, ISCASHBACK)
-
+        if tlv.tagCount(0xE4):
+            TC_TCLink.saveEMVData(tlv, 0xE4, ISCASHBACK)
+        elif tlv.tagCount(0xE5):
+            TC_TCLink.saveEMVData(tlv, 0xE5, ISCASHBACK)
+            
         return 3
 
     if tlv.tagCount(0xE5):
@@ -2004,7 +2025,6 @@ def promptForSwipeCard():
     conn.send([0xD2, 0x01, 0x2B, 0x01])
     status, buf, uns = getAnswer()
 
-
 def TransactionVoid():
     global EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION
     
@@ -2028,11 +2048,9 @@ def TransactionVoid():
             log.log('VOID request approved')
             TC_TCLink.showTCLinkResponse()
 
-    
 # ---------------------------------------------------------------------------- #
 # Main function
 # ---------------------------------------------------------------------------- #
-
 
 def processTransaction(args):
 
@@ -2333,9 +2351,9 @@ def processTransaction(args):
 
                 # TEMPLATE E5: TRANSACTION DECLINED
                 if tlv.tagCount(0xE5):
+                    log.logerr('TRANSACTION DECLINED OFFLINE')
                     tranType = 4
                     TC_TCLink.saveEMVData(tlv, 0xE5, ISCASHBACK)
-                    log.logerr('TRANSACTION DECLINED OFFLINE')
                     # E2E CL 17: requires TO GO ONLINE
                     # performCleanup()
                     # return
@@ -2508,7 +2526,7 @@ def processTransaction(args):
         # Check for swipe
         if tranType == 2:
             TC_TransactionHelper.displayEncryptedTrack(tlv, log)
-            choice = selectCreditOrDebit()
+            choice = TC_TransactionHelper.selectCreditOrDebit(conn, log)
             # refunds don't need pin block
             if choice == 2 and args.action != "credit":
                 getPINEntry(tlv)
@@ -2594,7 +2612,6 @@ def processTransaction(args):
     conn.send([0xD2, 0x01, 0x01, 0x00])
     log.log('*** RESET DISPLAY ***')
     status, buf, uns = getAnswer()
-
 
 # -------------------------------------------------------------------------------------- #
 # MAIN APPLICATION ENTRY POINT
@@ -2732,3 +2749,5 @@ if __name__ == '__main__':
             value = int(TransactionAmount)
             if value > 0 or ISBALANCEINQUIRY:
                 args.amount = value
+                
+# -------------------------------------------------------------------------------------- #

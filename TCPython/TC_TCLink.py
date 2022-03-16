@@ -269,16 +269,13 @@ AID_LISTS = {
     }
 }
 
-
 def setDeviceSerial(deviceSerial):
     global DEVICE_SERIAL
     DEVICE_SERIAL = deviceSerial
 
-
 def setDeviceUnattendedMode(deviceMode):
     global DEVICE_UNATTENDED
     DEVICE_UNATTENDED = deviceMode
-
 
 def setDeviceFallbackMode(fallbackType):
     global IS_FALLBACK, FALLBACK_TYPE
@@ -438,7 +435,6 @@ def saveEMVData(tlv, template, isCashback, isBlindRefund = False):
                     pass
     return processingcode
 
-
 def saveEMVASCIITag(tag):
     global EMV_TAGS, EMV_TAG_ASCII_MAP, EMV_TAGS_HEX_MAP
     try:
@@ -451,7 +447,6 @@ def saveEMVASCIITag(tag):
             bytearray(tag[0])), "=", hexlify(tag[1]))
         pass
 
-
 def saveEMVHEXMapTag(tag, hexConversion=True):
     global EMV_TAGS, EMV_TAG_ASCII_MAP, EMV_TAGS_HEX_MAP
     try:
@@ -462,17 +457,14 @@ def saveEMVHEXMapTag(tag, hexConversion=True):
             bytearray(tag[0])), "=", hexlify(tag[1]))
         pass
 
-
 def saveMSRTrack2AndExpiry(track2, expiry):
     global MSR_TRACK2_DATA, MSR_EXPIRY_DATA
     
     MSR_TRACK2_DATA = track2
     MSR_EXPIRY_DATA = expiry
-    
 
 def printEMVHexTags():
     print(">>  EMV_TAGS now ", str(EMV_TAGS))
-
 
 def SetProperties(args, log, hasCashback = False):
     global LOG_INTERNAL_DATA, LOG, DEVICE_PINPAD_CAPABLE, PARTIAL_AUTH, ISBALANCEINQUIRY, ISVOID
@@ -521,11 +513,9 @@ def SetProperties(args, log, hasCashback = False):
     except:
         pass
 
-
 def saveTransIdToFile(transId):
     with open('TransactionId.txt', 'w') as file:
         file.write(transId)
-
 
 def getTransIdFromFile():
     global TRANSACTION_ID
@@ -538,19 +528,15 @@ def getTransIdFromFile():
     
     return TRANSACTION_ID
 
-
 def setTransIdFromArgument(transId):
     global TRANSACTION_ID
     TRANSACTION_ID = transId
-    
 
 def getErrorType():
     return ERROR_TYPE
 
-
 def getResponseCode():
     return RESPONSE_CODE
-
 
 def getStatusResponse():
     status = 'unknown'
@@ -561,11 +547,9 @@ def getStatusResponse():
     #print("Status  :", status)
     return status
 
-
 def resetTCLinkConnection():
     tclink = win32com.client.Dispatch("TCLinkCOM.TClink")
 
-    
 def showTCLinkResponse():
     global ERROR_TYPE, RESPONSE_CODE
     status = 'unknown'
@@ -596,7 +580,6 @@ def showTCLinkResponse():
         pass
     return status
 
-
 def getDeclineType():
     declinetype = "unknown"
     try:
@@ -606,7 +589,6 @@ def getDeclineType():
     if len(declinetype):
         print("DECLINE-TYPE:", declinetype)
     return declinetype
-
 
 def addEMVTagData(isBlindRefund):
     global EMV_TAGS, POS_ENTRY_MODE, EMV_PROCESSING_CODE, DEVICE_PINPAD_CAPABLE, PARTIAL_AUTH, ISBALANCEINQUIRY, ISVOID
@@ -667,7 +649,6 @@ def addEMVTagData(isBlindRefund):
         for tag, data in EMV_TAGS.items():
             tclink.PushNameValue(tag + "=" + data)
 
-
 def processMSRTransaction(encryptedPIN, ksn, iscredit, isBlindRefund):
     global DEVICE_SERIAL, DEVICE_UNATTENDED, ENCRYPTED_TRACK_IV, ENCRYPTED_TRACK_KSN, ENCRYPTED_TRACK_DATA
     global IS_FALLBACK, FALLBACK_TYPE, MSR_TRACK2_DATA, MSR_EXPIRY_DATA, PARTIAL_AUTH
@@ -710,7 +691,6 @@ def processMSRTransaction(encryptedPIN, ksn, iscredit, isBlindRefund):
     tclink.Submit()
     return showTCLinkResponse()
 
-
 def processCLessMagstripeTransaction():
     global DEVICE_SERIAL, DEVICE_UNATTENDED, ENCRYPTED_TRACK_IV, ENCRYPTED_TRACK_KSN, ENCRYPTED_TRACK_DATA, EMV_TAGS
     #print(">>> processCLessMagstripTransaction iv", ENCRYPTED_TRACK_IV)
@@ -732,7 +712,6 @@ def processCLessMagstripeTransaction():
     #print(">> EMV_TAGS", str(EMV_TAGS))
     tclink.Submit()
     return showTCLinkResponse()
-
 
 def processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION, isBlindRefund = False):
     global DEVICE_SERIAL, DEVICE_UNATTENDED, ENCRYPTED_TRACK_IV, ENCRYPTED_TRACK_KSN, ENCRYPTED_TRACK_DATA, EMV_TAGS
@@ -776,7 +755,6 @@ def processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION, isBli
         
     return showTCLinkResponse()
 
-
 def processPINTransaction(encryptedPIN, ksn, EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION):
     global DEVICE_SERIAL, DEVICE_UNATTENDED, ENCRYPTED_TRACK_IV, ENCRYPTED_TRACK_KSN, ENCRYPTED_TRACK_DATA, EMV_TAGS
     print("Encrypted pin/ksn", encryptedPIN, ksn)
@@ -802,13 +780,11 @@ def processPINTransaction(encryptedPIN, ksn, EMV_L2_KERNEL_VERSION, EMV_CLESS_KE
     tclink.Submit()
     return showTCLinkResponse()
 
-
 def processCreditTransaction():
     global TRANSACTION_ID
     tclink.PushNameValue("transid="+TRANSACTION_ID)
     tclink.Submit()
     return showTCLinkResponse()
-
 
 def setTVRStates(aid, tvr):
     global FLOOR_LIMIT_EXCEEDED
@@ -822,7 +798,6 @@ def setTVRStates(aid, tvr):
             if floorlimit_exceeded == 0x80:
                 FLOOR_LIMIT_EXCEEDED = True
 
-                    
 def setCVMLimitStates(aid, cvm):
     global CVM_LIMIT_EXCEEDED, CVM_ISBELOW_LIMIT
     #aid_mc = 'A0000000041010'
@@ -835,7 +810,6 @@ def setCVMLimitStates(aid, cvm):
                 CVM_ISBELOW_LIMIT = True
             else:
                 CVM_LIMIT_EXCEEDED = True
-
                 
 def SetTrack2NonCompliantLength(aid, track2Data, cryptogram):
     global TRACK2_NON_COMPLIANT_LENGTH
@@ -849,3 +823,5 @@ def SetTrack2NonCompliantLength(aid, track2Data, cryptogram):
             #9F27=80 # ARQC - transaction requires online authorization 
             if len(track2Data) >= 19 and cryptogram != b'\x00':
                 TRACK2_NON_COMPLIANT_LENGTH = True
+
+# -------------------------------------------------------------------------------------- #
