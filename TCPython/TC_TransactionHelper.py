@@ -2,7 +2,7 @@
 '''
 Created on 03-12-2020
 
-@authors: Jon_B
+@authors: Jon_Bianco
 '''
 
 from testharness import *
@@ -44,12 +44,18 @@ AID_LISTS = {
     'amexCardAidList': [
       'A00000002501', 'AK'
     ],
+    'chinaUnionPayCardAidList': [
+      'A0000003330101', 'CK'
+    ],    
     'discoverCardAidList': [
-      'A0000001523010', 'DK' 
+      'A0000001523010', 'DK'
     ],
+    'discoverUSCreditCardAidList': [
+      'A0000001524010', 'DK' 
+    ],    
     'jcbCardAidList': [
       'A0000000651010', 'JK' 
-    ],    
+    ],
     'masterCardAidList': [
       'A0000000041010', 'MK' 
     ],
@@ -716,9 +722,9 @@ def ApplicationSelection(conn):
   #BUG: Unable to push the direct string not bytearray
   c_tag.store((0xDF,0xA2,0x11), 'PROCESS AS')
   c_tag.store((0xDF, 0xA2, 0x02), 0x01)
-  c_tag.store((0xDF, 0xA2, 0x03), b'1. Debit')
+  c_tag.store((0xDF, 0xA2, 0x03), b'1. Credit')
   c_tag.store((0xDF, 0xA2, 0x02), 0x02)
-  c_tag.store((0xDF, 0xA2, 0x03), b'2. Credit')
+  c_tag.store((0xDF, 0xA2, 0x03), b'2. Debit')
   # clear key inhibited
   #c_tag.store((0xDF, 0xA2, 0x15), 0x00)
 

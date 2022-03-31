@@ -66,7 +66,9 @@ ERROR_UNKNOWN_CARD = 3
 DATE = b'\x20\x10\x01'
 TIME = b'\x00\x00\x00'
 
+USE_QUICKCHIP_MODE = True
 QUICKCHIP_ENABLED = [ (0xDF, 0xCC, 0x79), [0x01] ]
+QUICKCHIP_DISABLED = [ (0xDF, 0xCC, 0x79), [0x00] ]
 ISSUER_AUTH_DATA = [ (0x91), [0x37,0xDD,0x29,0x75,0xC2,0xB6,0x68,0x2D,0x00,0x12] ]
 
 ACQUIRER_ID = [ (0xC2), [0x36, 0x35] ]
@@ -146,6 +148,12 @@ VIPA_VERSION = '6.8.2.11'
 
 # VAS REPORTING: VIPA 6.8.2.17+
 ENABLE_VAS_REPORTING = False
+
+# APPLICATION SELECTION OPTION
+APPLICATION_SELECTION_POS = False
+APPLICATION_AID = ''
+APPLICATION_LABEL = ''
+APPLICATION_SELECTION = 0
 
 
 # ---------------------------------------------------------------------------- #
@@ -349,12 +357,12 @@ def AbortTransaction():
   if status == 0x9000:
     log.logerr('Transaction aborted')
 
-def ResetDevice():
+def ResetDevice(p2 = 0x01):
   # Send reset device
   # P1 - 0x00
   # perform soft-reset, clears all internal EMV collection data and returns Terminal ID,
   #  Serial Number and Application information
-  conn.send([0xD0, 0x00, 0x00, 0x01])
+  conn.send([0xD0, 0x00, 0x00, p2])
   status, buf, uns = getAnswer()
   log.logerr('DEVICE RESET COMPLETED ----------')
   return buf
@@ -366,6 +374,7 @@ def performCleanup():
     conn.send([0xD2, 0x01, 0x01, 0x01])
     log.log('*** RESET DISPLAY ***')
     status, buf, uns = getAnswer(True, False)
+
 
 def getCVMResult(tlv):
     cvm_result = tlv.getTag((0x9F,0x34))[0]
@@ -778,17 +787,25 @@ def setFirstGenContinueTransaction():
         [(0xDF, 0xA2, 0x18), [0x00]],   # Pin entry style
         AUTHRESPONSECODE,               # TAG 8A
         CONTINUE_REQUEST_AAC if (ISOFFLINE or ISBALANCEINQUIRY) else CONTINUE_REQUEST_TC,  # TAG C0 object decision: AAC=00, TC=01
-        QUICKCHIP_ENABLED,
+        # quick chip as option for NO-PIN M/C Test Case MTIP-51.Test01.Scenario.01f
+        QUICKCHIP_ENABLED if USE_QUICKCHIP_MODE else QUICKCHIP_DISABLED
     ]
-
+      
     return (0xE0, continue_tran_tag)
 
 def sendFirstGenAC(tlv, tid):
     global APPLICATION_LABEL, EMV_VERIFICATION
+    global APPLICATION_SELECTION, APPLICATION_SELECTION_POS
+    
+    print('')
 
     # allow for decision on offline decline when issuing 1st GenAC (DNA)
     EMV_VERIFICATION = 0x01
-
+    
+    APPLICATION_AID   = ''
+    APPLICATION_LABEL = ''
+    panBlacklisted = False
+    
     # TEMPLATE E2 - DECISION REQUIRED
     # Should the device require a decision to be made it will return this template. The template could
     # contain one or more copies of the same data object with different value fields.
@@ -798,57 +815,52 @@ def sendFirstGenAC(tlv, tid):
     # an AID it is the card that requests customer confirmation; returning the AID in the next Continue
     # instruction confirms the selection of this application.
     if tlv.tagCount(0xE2):
+        print('APPLICATION SELECTION REQUEST ===================>')
         EMV_VERIFICATION = 0x00
+        appLabels = tlv.getTag(0x50)
+        appAIDs = tlv.getTag((0x9F, 0x06))
+        # LIST WITH SINGLE ITEM
         if tlv.tagCount(0x50) == 1 and tlv.tagCount((0x9F, 0x06)) == 1:
-            # This is app selection stuff
-            appLabels = tlv.getTag(0x50)
-            appAIDs = tlv.getTag((0x9F, 0x06))
-            pan = tlv.getTag(0x5A)
-            if len(pan):
-              panBlacklisted = isPanBlackListed(b2a_hex(pan[0]))
-            APPLICATION_LABEL = [(0x50, ), bytearray(appLabels[0])]
-            continue_tran_tag = [
-                APPLICATION_LABEL,
-                [(0x9F, 0x06), bytearray(appAIDs[0])],
-                [(0x9F, 0x02), AMOUNTFORINQUIRY if ISBALANCEINQUIRY else AMOUNT], # Amount
-                [(0x9F, 0x03), AMTOTHER],                                         # Amount, other
-                CURRENCY_CODE,                            # Currency code
-                COUNTRY_CODE,                             # Country code
-                ACQUIRER_ID,                              # TAG C2 acquirer id: ref. iccdata.dat
-                #[ (0x89), [0x00] ],                      # Host Authorisation Code)
-                AUTHRESPONSECODE,                         # TAG 8A
-                [ (0xDF, 0xA2, 0x18), [0x00] ],           # Pin entry style
-                # note: this tag presence will cause DNA tests to fail - need to evaluate further when to include/exclude
-                CONTINUE_REQUEST_TC if ISOFFLINE else CONTINUE_REQUEST_AAC, # TAG C0 object decision: 00=AAC, 01=TC
-                QUICKCHIP_ENABLED                                           # QC transaction 
-            ]
-            # The terminal requests an ARQC in the 1st GENERATE AC Command.
-            # The card returns an AAC to the 1st GENERATE AC Command. 
-            # The terminal does not send a 2nd GENERATE AC Command
-            if panBlacklisted:
-                continue_tran_tag.append(CONTINUE_REQUEST_TC)
-            continue_tpl = (0xE0, continue_tran_tag)
-            message = str(appLabels[0], 'iso8859-1')
-            if len(message):
-              displayMsg('* APPLICATION LABEL *\n\t' + message, 2)
-        else:
-          #Continue transaction
-          continue_tran_tag = [
-              [ (0x9F, 0x02), AMOUNT ]                                    # Amount
-              ,[(0x9F, 0x03), AMTOTHER]                                   # Amount, other
-              ,CURRENCY_CODE                                              # Currency code
-              ,COUNTRY_CODE                                               # Country code
-              ,ACQUIRER_ID                                                # TAG C2 acquirer id: ref. iccdata.dat
-              ,[ (0xDF, 0xA2, 0x18), [0x00] ]                             # Pin entry style
-              #,[ (0xDF, 0xA2, 0x0E), [0x5A] ]                            # Pin entry timeout
-              #,[ (0xDF, 0xA3, 0x07), [0x03,0xE8] ]                       # Bit map display
-              ,[ (0x89), [0x00] ]                                         # Host Authorisation Code)
-              ,AUTHRESPONSECODE                                           # TAG 8A
-              ,CONTINUE_REQUEST_TC if ISOFFLINE else CONTINUE_REQUEST_AAC # TAG C0 object decision: 00=AAC, 01=TC
-              ,QUICKCHIP_ENABLED                                          # QuickChip transaction
-          ]
-          continue_tpl = (0xE0, continue_tran_tag )
+            APPLICATION_SELECTION = 0
+        # set AID
+        log.warning("APPLICATION SELECTED:", APPLICATION_SELECTION + 1)
+        print('')
+        APPLICATION_AID   = [(0x9F, 0x06), bytearray(appAIDs[APPLICATION_SELECTION])]
+        APPLICATION_LABEL = [(0x50, ), bytearray(appLabels[APPLICATION_SELECTION])]
 
+    pan = tlv.getTag(0x5A)
+    if len(pan):
+      panBlacklisted = isPanBlackListed(b2a_hex(pan[0]))
+    continue_tran_tag = [
+        [(0x9F, 0x02), AMOUNTFORINQUIRY if ISBALANCEINQUIRY else AMOUNT], # Amount
+        [(0x9F, 0x03), AMTOTHER],                                         # Amount, other
+        CURRENCY_CODE,                                                    # Currency code
+        COUNTRY_CODE,                                                     # Country code
+        ACQUIRER_ID,                                                      # TAG C2 acquirer id: ref. iccdata.dat
+        #[ (0x89), [0x00] ],                                              # Host Authorisation Code)
+        AUTHRESPONSECODE,                                                 # TAG 8A
+        [ (0xDF, 0xA2, 0x18), [0x00] ],                                   # Pin entry style
+        # note: this tag presence will cause DNA tests to fail - need to evaluate further when to include/exclude
+        CONTINUE_REQUEST_TC if ISOFFLINE else CONTINUE_REQUEST_AAC,       # TAG C0 object decision: 00=AAC, 01=TC
+        # quick chip as option for NO-PIN M/C Test Case MTIP-51.Test01.Scenario.01f
+        QUICKCHIP_ENABLED if USE_QUICKCHIP_MODE else QUICKCHIP_DISABLED                                                
+    ]
+    # The terminal requests an ARQC in the 1st GENERATE AC Command.
+    # The card returns an AAC to the 1st GENERATE AC Command. 
+    # The terminal does not send a 2nd GENERATE AC Command
+    if panBlacklisted:
+        continue_tran_tag.append(CONTINUE_REQUEST_TC)
+    
+    if len(APPLICATION_AID) and len(APPLICATION_LABEL):
+        continue_tran_tag.append(APPLICATION_AID)
+        #continue_tran_tag.append(APPLICATION_LABEL)
+    
+    continue_tpl = (0xE0, continue_tran_tag)
+    
+    if APPLICATION_SELECTION_POS == False:
+      message = str(appLabels[APPLICATION_SELECTION], 'iso8859-1')
+      if len(message):
+        displayMsg('* APPLICATION LABEL *\n\t' + message, 2)
 
     log.log("CONTINUE TRANSACTION: GenAC1 -----------------------------------------------------------------------------")
 
@@ -874,7 +886,8 @@ def sendSecondGenAC(tlv, tid):
       CONTINUE_REQUEST_TC if ISOFFLINE else CONTINUE_REQUEST_AAC,         # TAG C0 object decision:
                                                                           # 00=AAC, 01=TC
       #ISSUER_AUTH_DATA,                                                   # Authentication Data
-      QUICKCHIP_ENABLED
+      # quick chip as option for NO-PIN M/C Test Case MTIP-51.Test01.Scenario.01f
+      QUICKCHIP_ENABLED if USE_QUICKCHIP_MODE else QUICKCHIP_DISABLED
     ]
     
     if IS_PIN_BYPASSED:
@@ -968,11 +981,23 @@ def applicationSelectionAutomatic(tlv):
     log.warning('APPLICATION SELECTED:', appLabels[sel])
     return 0
 
+
+def applicationSelectionDefault(tlv):
+  APPLICATION_SELECTION = ''
+  if tlv.tagCount(0xE2):
+    # This is app selection stuff
+    appLabels = tlv.getTag(0x50)
+    appAIDs = tlv.getTag((0x9F, 0x06))
+    APPLICATION_SELECTION = [(0x50, ), bytearray(appLabels[0])], [(0x9F, 0x06), bytearray(appAIDs[0])]
+  return APPLICATION_SELECTION
+
+
 # EMV transaction
 def processEMV(tid):
 
     global AMOUNT, DATE, TIME, OFFLINERESPONSE, AMTOTHER, SIGN_RECEIPT, EMV_VERIFICATION, IS_PIN_BYPASSED
-
+    global APPLICATION_SELECTION, APPLICATION_SELECTION_POS
+    
     transaction_counter = b'\x00\x01'
 
     #app_sel_tags = [
@@ -984,19 +1009,23 @@ def processEMV(tid):
     #    [(0x87), b'\x01']
     #]
     
+    # AID Selection Mechanism
+    APPLICATION_SELECTION = -1
+    
     start_trans_tag = [
-         [(0x9C), TRANSACTION_TYPE],                                      # transaction type
-         [(0x9F, 0x02), AMOUNTFORINQUIRY if ISBALANCEINQUIRY else AMOUNT],# Amount
+         [(0x9C), TRANSACTION_TYPE],                                              # transaction type
+         [(0x9F, 0x02), AMOUNTFORINQUIRY if ISBALANCEINQUIRY else AMOUNT],        # Amount
          [(0x9F, 0x03), AMTOTHER],
-         [(0x9A), DATE],                      # date
-         [(0x9F,0x21), TIME],                 # time
-         CURRENCY_CODE,                       # currency code
-         COUNTRY_CODE,                        # Country code
-         [(0x9F,0x41), transaction_counter ], # transaction counter
-         [(0xDF,0xA2,0x18), b'\x00'],         # pin entry style
-         #[(0xDF,0xA2,0x14), b'\x01'],         # Suppress Display
-         [(0xDF,0xA2,0x04), b'\x01']          # Application selection using PINPad
-         #[(0xDF, 0xDF, 0x0D), b'\x02']       # Don't force transaction online
+         [(0x9A), DATE],                                                          # date
+         [(0x9F,0x21), TIME],                                                     # time
+         CURRENCY_CODE,                                                           # currency code
+         COUNTRY_CODE,                                                            # Country code
+         [(0x9F,0x41), transaction_counter ],                                     # transaction counter
+         [(0xDF,0xA2,0x18), b'\x00'],                                             # pin entry style
+         #[(0xDF,0xA2,0x14), b'\x01'],                                            # Suppress Display
+         #[(0xDF, 0xDF, 0x0D), b'\x02'],                                          # Don't force transaction online
+         ### ENSURE THIS IS ALWAYS THE LAST ENTRY
+         [(0xDF, 0xA2, 0x04), b'\x00' if APPLICATION_SELECTION_POS else b'\x01']  # External Application Selection (POS)
     ]
     start_templ = ( 0xE0, start_trans_tag )
     
@@ -1022,7 +1051,7 @@ def processEMV(tid):
 
                   return processMagstripeFallback(tid)
                 else:
-                  displayMsg("\tUNSUPPORTED CARD\n\n\tREINSERT", 2)
+                  displayMsg("\tUNSUPPORTED CARD\tREINSERT", 2)
                   removeEMVCard()
                   # START TRANSACTION [DE D1]
                   conn.send([0xDE, 0xD1, 0x00, 0x00], start_templ)
@@ -1042,13 +1071,36 @@ def processEMV(tid):
         
             tlv = TLVParser(buf)
         
-            if tlv.tagCount(0x50) > 1 and tlv.tagCount((0x9F, 0x06)) > 1:
-                #selected = applicationSelection(tlv)
-                selected = applicationSelectionAutomatic(tlv)
-                if selected == 0:
+            # APPLICATION SELECTION
+            if tlv.tagCount(0xE2):
+              if tlv.tagCount(0x50) > 1 and tlv.tagCount((0x9F, 0x06)) > 1:
+                  if APPLICATION_SELECTION_POS == True:
+                    # has operator made a choice already?
+                    if APPLICATION_SELECTION != -1:
+                      log.warning('POS DECISION MADE =============================================================')
+                      break
+                    log.warning('POS DECISION REQUIRED =============================================================')
+                    AbortTransaction()
+                    APPLICATION_SELECTION = TC_TransactionHelper.ApplicationSelection(conn)
+                    log.log("USER SELECTED:", APPLICATION_SELECTION)
+                    if APPLICATION_SELECTION == -1:
+                      return -1
+                    #aidSelection = applicationSelection(tlv)
+                    #aidSelection = applicationSelectionAutomatic(tlv)
+                    #if aidSelection == 0:
+                    #  continue
+                    
+                    #ResetDevice(0x00)
+                    
+                    # change app selection request
+                    #start_trans_tag.remove(start_trans_tag[-1])
+                    #start_trans_tag.append([(0xDF,0xA2,0x04), b'\x01'])
+                    
+                    # START TRANSACTION [DE D1]
+                    conn.send([0xDE, 0xD1, 0x00, 0x00], start_templ)
+    
                   continue
-                if selected == -1:
-                  return -1
+                  
             break
 
     #Let's check VSP
@@ -1057,17 +1109,14 @@ def processEMV(tid):
 
     # ENCRYPTED TRACK DATA
     displayEncryptedTrack(tlv)
-        
-    if tlv.tagCount(0xE2):
-      # HMAC PAN
-      displayHMACPAN(tlv)
-       
+
     #TC_TCLink.saveCardData(tlv)
     #print(">> before continue: ", str(tlv))
 
     # 1st Generation AC
     continue_tpl = sendFirstGenAC(tlv, tid)
-    
+    sleep(5)
+
     # Template E6 requests for PIN, so allow Template E4 to just submit the transaction (without collecting PIN again)
     hasPINEntry = False
     pinTryCounter = 0x00
@@ -1119,7 +1168,7 @@ def processEMV(tid):
                 # Terminal Capabilites
                 appLabel = TC_TransactionHelper.reportTerminalCapabilities(tlv, log)
                 if len(appLabel):
-                  displayMsg('\t*** APPLICATION ***\n\n\t' + appLabel.decode('iso8859-1'), 3)
+                  displayMsg('\t*** APPLICATION ***\t' + appLabel.decode('iso8859-1'), 3)
 
                 # HMAC PAN
                 displayHMACPAN(tlv)
@@ -1163,8 +1212,26 @@ def processEMV(tid):
         log.log("Transaction approved")
         displayMsg("Approved", 3)
         return 1
+    elif tlv.tagCount(0xE4):
+       # CardSource
+       TC_TransactionHelper.reportCardSource(tlv, log)
+       # Terminal Capabilites
+       appLabel = TC_TransactionHelper.reportTerminalCapabilities(tlv, log)
+       if len(appLabel):
+          displayMsg('\t*** APPLICATION ***\t' + appLabel.decode('iso8859-1'), 3)
+
+       # HMAC PAN
+       displayHMACPAN(tlv)
         
-    if tlv.tagCount(0xE5):
+       cvm_value = getCVMResult(tlv)
+       # NOT AN EROR, JUST EASIER TO FIND IN THE TERMINAL OUTPUT
+       log.logerr('CVM REQUESTED ______:', cvm_value)
+       print('')
+        
+       # TVR Status
+       checkTVRStatus(tlv)
+       #
+    elif tlv.tagCount(0xE5):
         log.logerr('TRANSACTION DECLINED OFFLINE')
 
         # Check for Contact EMV Capture
@@ -1341,7 +1408,8 @@ def startContactless(preferredAID=''):
         CURRENCY_CODE,                  # currency code
         COUNTRY_CODE,                   # country code
         #AUTHRESPONSECODE,
-        #QUICKCHIP_ENABLED
+        # quick chip as option for NO-PIN M/C Test Case MTIP-51.Test01.Scenario.01f
+        QUICKCHIP_ENABLED if USE_QUICKCHIP_MODE else QUICKCHIP_DISABLED
     ]
 
     # Sale / Purchase with cashback not allowed here
@@ -1486,6 +1554,8 @@ def processCtlsAIDList(tlv):
 
 def processCtlsAIDListAutomatic(tlv):
     # BF0C Tag Listing AIDS
+    print('')
+    print('APPLICATION SELECTION REQUEST ================>')
     if tlv.tagCount(0xA5):
         fci_value = tlv.getTag((0xA5))[0]
 
@@ -1840,7 +1910,7 @@ def processTransaction(args):
                     # Terminal Capabilites
                     appLabel = TC_TransactionHelper.reportTerminalCapabilities(tlv, log)
                     if len(appLabel):
-                      displayMsg('\t*** APPLICATION ***\n\n\t' + appLabel.decode('iso8859-1'), 3)
+                      displayMsg('\t*** APPLICATION ***\t' + appLabel.decode('iso8859-1'), 3)
                 
                     cvm_value = getCVMResult(tlv)
                     # NOT AN EROR, JUST EASIER TO FIND IN THE TERMINAL OUTPUT

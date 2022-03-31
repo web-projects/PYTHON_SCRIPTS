@@ -82,8 +82,8 @@ def htmlEntry():
     buf = ResetDevice()
     tlv = TLVParser(buf)
     
-    style_pre = b'<div style=\'font-family:monospace; font-size:12px;\'>'
-    vipa_string = b'<p>VIPA FIRMWARE :' + vipaVersion(tlv) + b'</p>' + b'<p>VIPA FIRMWARE :' + vipaVersion(tlv) + b'</p>'
+    style_pre = b'<div style=\'font-family:monospace; font-size:6px;\'>'
+    vipa_string = b'<p style=\'font-size:200%;\'>VIPA FIRMWARE :' + vipaVersion(tlv) + b'</p>' #+ b'<p>VIPA FIRMWARE :' + vipaVersion(tlv) + b'</p>'
     style_post = b'</div>'
     vipa_version = style_pre + vipa_string + style_post
     

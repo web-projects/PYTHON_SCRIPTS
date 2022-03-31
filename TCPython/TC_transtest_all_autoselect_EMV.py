@@ -2,7 +2,7 @@
 '''
 Created on 21-06-2012
 
-@authors: Lucjan_B1, Kamil_P1, Matthew_H, Jon_B
+@authors: Lucjan_B1, Kamil_P1, Matthew_H, Jon_Bianco
 '''
 
 from testharness import *
@@ -236,10 +236,22 @@ import re
 #
 # 1. Added emv_kernel_version for US Debit Common AID: A0000000980840
 #
-VERSION_LBL = '1.0.0.41'
+#VERSION_LBL = '1.0.0.41'
 #
 # 1. Cashback processing as DEBIT instead of CREDIT
 #
+#VERSION_LBL = '1.0.0.42'
+#
+# 1. Transmit TAG 9F6C as 'emv_9f6c_ctq'
+#
+#VERSION_LBL = '1.0.0.43'
+#
+# 1. Added DISCOVER US-DEBIT AID A0000001524010 to kernel reporting logic.
+# 
+VERSION_LBL = '1.0.0.44'
+#
+# 1. Fixed TC_TCLink.processPINTransaction missing argument.
+# 
 # ----------------------------------------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------- #
@@ -304,7 +316,10 @@ MAGSTRIPE_TRACKS_AVAILABLE = 2
 MAGSTRIPE_CARD_SWIPE = 3
 ERROR_UNKNOWN_CARD = 4
 
+USE_QUICKCHIP_MODE = True
 QUICKCHIP_ENABLED = [(0xDF, 0xCC, 0x79), [0x01]]
+QUICKCHIP_DISABLED = [(0xDF, 0xCC, 0x79), [0x00]]
+
 ISSUER_AUTH_DATA = [(0x91), [0x37, 0xDD, 0x29, 0x75, 0xC2, 0xB6, 0x68, 0x2D, 0x00, 0x12]]
 
 # iccdata.dat: #65
@@ -751,7 +766,11 @@ def applicationSelectionWithChoice():
 
     if APPLICATION_SELECTION != -1:
         if len(APPLICATION_AID) and len(APPLICATION_LABEL):
+            # save application label 
+            TC_TCLink.saveEMVASCIITag((APPLICATION_LABEL))
+            # build tag for next request        
             app_sel_tags = [
+                # POS APPLICATION SELECTION
                 APPLICATION_AID, 
                 APPLICATION_LABEL,
                 ACQUIRER_ID
@@ -761,7 +780,7 @@ def applicationSelectionWithChoice():
             log.log("CONTINUE TRANSACTION: AID CHOICE --------------------------------------------")
             # CONTINUE TRANSACTION [DE D2]
             conn.send([0xDE, 0xD2, 0x00, 0x00], app_sel_templ)
-            log.log('App selected, waiting for response...')
+            log.log('POS Application Selected, waiting for response...')
 
 # Checks card status, based on device response
 def EMVCardState(tlv):
@@ -1065,7 +1084,7 @@ def OnlinePinTransaction(tlv, cardState, continue_tpl, setattempts=0, bypassSeco
                         EMV_CLESS_KERNEL_VERSION = TC_TransactionHelper.GetEMVContactlessKernelVersion(conn, tlv, entryMode_value)
 
                     # send to process online PIN entry
-                    response = TC_TCLink.processPINTransaction(encryptedPIN, ksn, EMV_CLESS_KERNEL_VERSION)
+                    response = TC_TCLink.processPINTransaction(encryptedPIN, ksn,  EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION)
 
                     # Timeout Reversal (TOR): don't retry PIN entry
                     if response == "error":
@@ -1247,7 +1266,8 @@ def setFirstGenContinueTransaction():
         [(0xDF, 0xA2, 0x18), [0x00]],  # Pin entry style
         AUTHRESPONSECODE,  # TAG 8A
         CONTINUE_REQUEST_AAC if (ISOFFLINE or ISBALANCEINQUIRY) else CONTINUE_REQUEST_TC,  # TAG C0 object decision: AAC=00, TC=01
-        QUICKCHIP_ENABLED,
+        # quick chip as option for NO-PIN M/C Test Case MTIP-51.Test01.Scenario.01f
+        QUICKCHIP_ENABLED if USE_QUICKCHIP_MODE else QUICKCHIP_DISABLED
     ]
 
     return (0xE0, continue_tran_tag)
@@ -1306,7 +1326,8 @@ def sendFirstGenAC(tlv, tid):
                 # note: this tag presence will cause DNA tests to fail - need to evaluate further when to include/exclude
                 # DNA TC-37: terminal requests an ARQC in the 1st GenAC and TVR bit (Merchant Forced Transaction Online) Byte4/Bit4 is set to 1
                 CONTINUE_REQUEST_AAC if (ISBALANCEINQUIRY or panBlacklisted) else CONTINUE_REQUEST_TC,  # TAG C0 object decision: AAC=00, TC=01
-                QUICKCHIP_ENABLED,
+                # quick chip as option for NO-PIN M/C Test Case MTIP-51.Test01.Scenario.01f
+                QUICKCHIP_ENABLED if USE_QUICKCHIP_MODE else QUICKCHIP_DISABLED
             ]
             if len(APPLICATION_AID) and len(APPLICATION_LABEL):
                 continue_tran_tag.append(APPLICATION_AID)
@@ -1316,7 +1337,10 @@ def sendFirstGenAC(tlv, tid):
             if tlv.tagCount((0x9F, 0x12)):
                 preferred = tlv.getTag((0x9F, 0x12))[0]
                 message = message + '\n\n\t* PREFERRED NAME *\n\t' + str(preferred, 'iso8859-1')
-            #displayMsg('* APPLICATION LABEL *\n\t' + message, 1)
+                
+            if APPLICATION_SELECTION_POS == False:
+                displayMsg('* APPLICATION LABEL *\n\t' + message, 1)
+                
             # save Application Label
             TC_TCLink.saveEMVASCIITag((APPLICATION_LABEL))
     else:
@@ -1348,8 +1372,9 @@ def sendSecondGenAC(continue_tpl):
         [(0xDF, 0xA3, 0x07), [0x03, 0xE8]],
         CONTINUE_REQUEST_AAC if (ISOFFLINE or ISBALANCEINQUIRY) else CONTINUE_REQUEST_TC,  # TAG C0 object decision: AAC=00, TC=01
         # THIS IS CAUSING THE WORKFLOW TO REPORT External Authenticate Command
-        # ISSUER_AUTH_DATA,
-        QUICKCHIP_ENABLED,
+        # ISSUER_AUTH_DATA
+        # quick chip as option for NO-PIN M/C Test Case MTIP-51.Test01.Scenario.01f
+        QUICKCHIP_ENABLED if USE_QUICKCHIP_MODE else QUICKCHIP_DISABLED
     ]
     continue2_tpl = (0xE0, continue_trans_tag)
 
@@ -1839,9 +1864,9 @@ def processEMV(tid):
 
 
             if tlv.tagCount(0xE2):
-                TC_TransactionHelper.vspDecrypt(tlv, tid, log)
-                TC_TransactionHelper.displayEncryptedTrack(tlv, log)
-                TC_TransactionHelper.displayHMACPAN(tlv, log)
+                #TC_TransactionHelper.vspDecrypt(tlv, tid, log)
+                #TC_TransactionHelper.displayEncryptedTrack(tlv, log)
+                #TC_TransactionHelper.displayHMACPAN(tlv, log)
                 TC_TCLink.saveEMVData(tlv, 0xE3, ISCASHBACK, ISBLINDREFUND)
                         
             if tlv.tagCount(0xE4):

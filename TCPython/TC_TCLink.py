@@ -2,7 +2,7 @@
 '''
 Created on 03-01-2020
 
-@authors: Matthew_H
+@authors: Jon Bianco
 '''
 
 from TC_testharness import *
@@ -106,12 +106,14 @@ EMV_TAGS_HEX_MAP = {
     (0x9F, 0x4C): 'emv_9f4c_iccdynamicnum',
     (0x9F, 0x53): 'emv_9f53_transactioncategorycode',
     (0x9F, 0x5B): 'emv_9f5b_issuerscriptresults',
+    (0x9F, 0x6C): 'emv_9f6c_ctq',
     (0x9F, 0x6E): 'emv_9f6e_thirdpartydata',
     (0x9F, 0x7C): 'emv_9f7c_merchantcustomdata',
     (0x9F, 0x66): 'emv_9f66_ttq',
     # emv_kernel_version
     # emv_fallback
     # emv_fallback_type
+    (0xDF, 0x52): 'emv_df52_idtech_cvm',   
     (0xDF, 0xDF, 0x06): 'emv_tac_default',
     (0xDF, 0xDF, 0x07): 'emv_tac_denial',
     (0xDF, 0xDF, 0x08): 'emv_tac_online'
@@ -320,6 +322,31 @@ def saveCardData(tlv):
             ENCRYPTED_TRACK_KSN = vsp_tlv.getTag((0xDF, 0xDF, 0x11))[0].hex().upper()
             ENCRYPTED_TRACK_DATA = vsp_tlv.getTag((0xDF, 0xDF, 0x10))[0].hex().upper()
 
+
+def addCDCVMTagIfNecessary(bite):
+    global EMV_TAGS
+    
+    remove_tag_9f34 = False
+          
+    # Transaction CVM
+    # 00 : No CVM
+    # 01 : Signature
+    # 02 : Online PIN
+    # 03 : Mobile CVM / Consumer Device CVM
+    switcher = {
+        0x80: "03",
+        0x40: "02",
+        0x20: "01",
+        0x00: "00"
+    }
+    cvm_value = switcher.get(bite, "FF")
+    if cvm_value != "FF":
+        remove_tag_9f34 = True
+        EMV_TAGS[EMV_TAGS_HEX_MAP[(0xDF, 0x52)]] = cvm_value
+
+    return remove_tag_9f34
+
+
 # Capture/update EMV data values
 def saveEMVData(tlv, template, isCashback, isBlindRefund = False):
     global LOG_INTERNAL_DATA, LOG
@@ -338,6 +365,7 @@ def saveEMVData(tlv, template, isCashback, isBlindRefund = False):
     if tlv.tagCount((template)):
         tags = tlv.getTag((template))
         #print('>>> tags', str(tags))
+        remove_tag_9f34 = False
         for tag in tags:
             #EMV_TAGS[tag[0]] = tag[1]
             #print(">>  tag", tag[0], "value", tag[1])
@@ -379,7 +407,11 @@ def saveEMVData(tlv, template, isCashback, isBlindRefund = False):
                 except:
                     pass
             elif tag[0] == (0x9F, 0x12):
-                print("APPLICATION PREFERRED NAME=", tag[1].hex().upper())      
+                print("APPLICATION PREFERRED NAME=", tag[1].hex().upper())
+            # CUP modification for TSYS test E2E_CL_47
+            # ONLINE PIN not required, CDCVM performed: CTQ Byte 2 bit 8 is 1
+            elif tag[0] == (0x9F, 0x6C):
+                remove_tag_9f34 = addCDCVMTagIfNecessary(tag[1][1])
                 
             emv_processing_code = 'credit'
             try:
@@ -433,6 +465,12 @@ def saveEMVData(tlv, template, isCashback, isBlindRefund = False):
                     LOG.log(">>  EMV_TAGS skipped ", hexlify(
                         bytearray(tag[0])), "=", hexlify(tag[1]))
                     pass
+                
+        # CUP modification for TSYS test E2E_CL_47
+        # report TAG 9F6C and omit TAG 9F34
+        if remove_tag_9f34:
+            EMV_TAGS.pop(EMV_TAGS_HEX_MAP[(0x9F, 0x34)])
+               
     return processingcode
 
 def saveEMVASCIITag(tag):

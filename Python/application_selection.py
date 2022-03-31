@@ -1,5 +1,5 @@
 from testharness import *
-from testharness.tlvparser import TLVParser,tagStorage
+from testharness.tlvparser import TLVParser, tagStorage
 from sys import exit
 from testharness.syslog import getSyslog
 from testharness.utility import check_status_error

@@ -8,7 +8,7 @@ Created on 03-12-2020
 from testharness import *
 from testharness.syslog import getSyslog
 from binascii import hexlify, unhexlify, b2a_hex
-from testharness.tlvparser import TLVParser
+from testharness.tlvparser import TLVParser, tagStorage
 from testharness.utility import check_status_error
 
 # ---------------------------------------------------------------------------- #
@@ -339,3 +339,42 @@ def getValue(tag, value):
         dataLen = int(value[tagIndex+2:tagIndex+4], 16) * 2
         tagValue = value[tagIndex+offset:tagIndex+offset+dataLen]
     return tagValue
+
+#----------------------------------------------------------
+# APPLICATION SELECTION
+#----------------------------------------------------------
+
+LIST_STYLE_SCROLL = 0x00
+LIST_STYLE_NUMERIC = 0x01
+LIST_STYLE_SCROLL_CIRCULAR = 0x02
+
+def ApplicationSelection(conn):
+  selected = -1
+  # Set data for request '''
+  c_tag = tagStorage()
+  c_tag.store( (0xDF, 0xA2, 0x12), LIST_STYLE_SCROLL )
+  #BUG: Unable to push the direct string not bytearray
+  c_tag.store((0xDF,0xA2,0x11), 'PROCESS AS')
+  c_tag.store((0xDF, 0xA2, 0x02), 0x01)
+  c_tag.store((0xDF, 0xA2, 0x03), b'1. Debit')
+  c_tag.store((0xDF, 0xA2, 0x02), 0x02)
+  c_tag.store((0xDF, 0xA2, 0x03), b'2. Credit')
+  # clear key inhibited
+  #c_tag.store((0xDF, 0xA2, 0x15), 0x00)
+
+  ''' Send request '''
+  conn.send([0xD2, 0x03, 0x00, 0x01] , c_tag.get())
+  
+  is_unsolicited = True
+  while is_unsolicited:  # unsolicited responses come when echo mode is on
+      status, buf, is_unsolicited = conn.receive()
+      check_status_error( status )
+
+  tlv = TLVParser(buf)
+  if tlv.tagCount((0xDF, 0xA2, 0x02)) == 1:
+    selection = tlv.getTag((0xDF, 0xA2, 0x02))[0]
+    selected = selection[0]
+
+  return selected
+
+# -------------------------------------------------------------------------------------- #

@@ -1076,7 +1076,8 @@ def transactionExample():
                     CONTINUE_TRANS_TAG.append(APPLICATION_LABEL)
                     CONTINUE_TRANS_TAG.append([(0x9F, 0x06), bytearray(appAIDs[0])])
                     message = str(appLabels[0], 'iso8859-1')
-                    displayCommandString('* APPLICATION LABEL *\n\t' + message)
+                    displayCommandString('* APPLICATION LABEL *
+\t' + message)
                     log.logerr('APPLICATION LABEL:' + message)
                      
                 if result == MAGSWIPE_FALLBACK:
