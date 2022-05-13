@@ -137,6 +137,7 @@ def GetSecurityConfiguration():
     ade_keyset_id = ADE_KEY_SLOT
 
     # ADE SRED KEY
+    log.attention("*** ADE SRED KEY FOR SLOT : ", ade_keyset_id)
     tlv = GetKeyConfiguration(ade_host_id, ade_keyset_id)
     #tlv = GetKeyConfiguration(0x00, 0x00)
 
@@ -159,6 +160,7 @@ def GetSecurityConfiguration():
       log.logerr("ADE SRED IV : MISSING")
     
     # ONLINE PIN DEBIT KEY
+    log.attention("*** DEBIT PIN KEY FOR SLOT : ", PIN_KEYSET_ID)
     tlv = GetKeyConfiguration(PIN_HOST_ID, PIN_KEYSET_ID)
     
     # REPORT TID
@@ -196,7 +198,7 @@ def GetSecurityConfiguration():
         else:
           log.logerr("PINBLOCK KSN:", hexStrKSN)
     else:
-        log.logerr("NO ONLINE PIN REPORTED")
+        log.logerr("NO DEBIT PIN KEY REPORTED")
 
     # Display Idle
     #conn.send([0xD2, 0x01, 0x01, 0x00])

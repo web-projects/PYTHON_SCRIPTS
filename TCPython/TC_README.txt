@@ -20,7 +20,12 @@ setuptools 41.2.0
 
 In addition, the following updates should also be done:
 - Update C:\Windows\System32\drivers\etc\hosts file (requires Admin access)
-	Add/update entry for pgw1.trustcommerce.com using the IPv4 address of PN97.   For example:
+	
+  1. Add/update entry for pgw1.trustcommerce.com using the IPv4 address of PN92.
+	
+		10.11.2.213	pgw1.trustcommerce.com
+
+  2. Add/update entry for pgw1.trustcommerce.com using the IPv4 address of PN97.
 	
 		10.11.2.193	pgw1.trustcommerce.com
 
@@ -33,8 +38,6 @@ In addition, the following updates should also be done:
 	Version 4.4.0 can be found at: https://vault.trustcommerce.com/downloads/tclink-4.4.0-COM.zip
 	
 - Reboot to add C:\Program Files (x86)\TCLink to the path
-
-
 
 Usage:
 TC_transtest_all_autoselect_MSR.py [--custid CUSTID] [--password PASSWORD] [--action ACTION] [--serial SERIAL_PORT]

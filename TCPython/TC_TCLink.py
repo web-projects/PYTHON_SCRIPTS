@@ -51,6 +51,7 @@ FLOOR_LIMIT_EXCEEDED = False
 CVM_LIMIT_EXCEEDED = False
 CVM_ISBELOW_LIMIT = False
 TRACK2_NON_COMPLIANT_LENGTH = False
+FORCE_TAG_DF52_ONLINEPIN = False
 
 # REFUND / CREDIT
 TRANSACTION_ID = ''
@@ -324,10 +325,16 @@ def saveCardData(tlv):
 
 
 def addCDCVMTagIfNecessary(bite):
-    global EMV_TAGS
+    global EMV_TAGS, TAG_DF52_ONLINEPIN
     
     remove_tag_9f34 = False
           
+    # VISA: In the instance of a cash or cashback transaction an online PIN is always required,
+    # regardless of what CVM method might be indicated in the CTQ (tag '9F6C')
+    if FORCE_TAG_DF52_ONLINEPIN:
+        EMV_TAGS[EMV_TAGS_HEX_MAP[(0xDF, 0x52)]] = "02" 
+        return True
+    
     # Transaction CVM
     # 00 : No CVM
     # 01 : Signature
@@ -340,6 +347,7 @@ def addCDCVMTagIfNecessary(bite):
         0x00: "00"
     }
     cvm_value = switcher.get(bite, "FF")
+    # TAG emv_df52_idtech_cvm
     if cvm_value != "FF":
         remove_tag_9f34 = True
         EMV_TAGS[EMV_TAGS_HEX_MAP[(0xDF, 0x52)]] = cvm_value
@@ -348,7 +356,7 @@ def addCDCVMTagIfNecessary(bite):
 
 
 # Capture/update EMV data values
-def saveEMVData(tlv, template, isCashback, isBlindRefund = False):
+def saveEMVData(tlv, template, isCashback, ISMOCKEDREFUND = False):
     global LOG_INTERNAL_DATA, LOG
     global EMV_TAGS, POS_ENTRY_MODE, EMV_PROCESSING_CODE
     global PLATFORM, AID_TAGS, AID_LISTS, FLOOR_LIMIT_EXCEEDED, CVM_LIMIT_EXCEEDED, CVM_ISBELOW_LIMIT
@@ -373,7 +381,7 @@ def saveEMVData(tlv, template, isCashback, isBlindRefund = False):
                 # CLess EMV (07) or CLess Magstrip (91)
                 if tag[1] == b'\x07' or tag[1] == b'\x91':
                     #print(">> POS Mode", tag[1])
-                    if ISBALANCEINQUIRY == False and isBlindRefund == False:
+                    if ISBALANCEINQUIRY == False and ISMOCKEDREFUND == False:
                         POS_ENTRY_MODE = 'contactless=y'
             elif tag[0] == (0x9F, 0x33):
                 # dynamic handling for MasterCard Contactless above CVM limit
@@ -628,7 +636,7 @@ def getDeclineType():
         print("DECLINE-TYPE:", declinetype)
     return declinetype
 
-def addEMVTagData(isBlindRefund):
+def addEMVTagData(ISMOCKEDREFUND):
     global EMV_TAGS, POS_ENTRY_MODE, EMV_PROCESSING_CODE, DEVICE_PINPAD_CAPABLE, PARTIAL_AUTH, ISBALANCEINQUIRY, ISVOID
 
     if ISVOID == True:
@@ -658,7 +666,7 @@ def addEMVTagData(isBlindRefund):
         "device_pinpad_capable": DEVICE_PINPAD_CAPABLE
     }
 
-    if ISBALANCEINQUIRY == False and isBlindRefund == False:
+    if ISBALANCEINQUIRY == False and ISMOCKEDREFUND == False:
         OVERRIDE_TAGS["partialauth"] = PARTIAL_AUTH
       
     print("Override tags used:")
@@ -687,7 +695,7 @@ def addEMVTagData(isBlindRefund):
         for tag, data in EMV_TAGS.items():
             tclink.PushNameValue(tag + "=" + data)
 
-def processMSRTransaction(encryptedPIN, ksn, iscredit, isBlindRefund):
+def processMSRTransaction(encryptedPIN, ksn, iscredit, ISMOCKEDREFUND):
     global DEVICE_SERIAL, DEVICE_UNATTENDED, ENCRYPTED_TRACK_IV, ENCRYPTED_TRACK_KSN, ENCRYPTED_TRACK_DATA
     global IS_FALLBACK, FALLBACK_TYPE, MSR_TRACK2_DATA, MSR_EXPIRY_DATA, PARTIAL_AUTH
     global TRANSACTION_ID, ISVOID
@@ -702,7 +710,7 @@ def processMSRTransaction(encryptedPIN, ksn, iscredit, isBlindRefund):
     else:    
         tclink.PushNameValue("encryptedtrack="+"TVP|iv:"+ENCRYPTED_TRACK_IV +
                             "|ksn:"+ENCRYPTED_TRACK_KSN+"|vipa:"+ENCRYPTED_TRACK_DATA)
-        if isBlindRefund == True:
+        if ISMOCKEDREFUND == True:
             tclink.PushNameValue("reftransid="+TRANSACTION_ID)
         else:
             tclink.PushNameValue("unattended="+DEVICE_UNATTENDED)
@@ -751,7 +759,7 @@ def processCLessMagstripeTransaction():
     tclink.Submit()
     return showTCLinkResponse()
 
-def processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION, isBlindRefund = False):
+def processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION, ISMOCKEDREFUND = False):
     global DEVICE_SERIAL, DEVICE_UNATTENDED, ENCRYPTED_TRACK_IV, ENCRYPTED_TRACK_KSN, ENCRYPTED_TRACK_DATA, EMV_TAGS
     global TRANSACTION_ID, ISVOID
     
@@ -770,13 +778,13 @@ def processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION, isBli
     if ISVOID == False:
         tclink.PushNameValue("device_serial="+DEVICE_SERIAL)
     
-    if isBlindRefund == True:
+    if ISMOCKEDREFUND == True:
         tclink.PushNameValue("reftransid="+TRANSACTION_ID)
     elif ISVOID == False:
         tclink.PushNameValue("unattended="+DEVICE_UNATTENDED)
         
     print(">> EMV: len(EMV_TAGS)", str(len(EMV_TAGS)))
-    addEMVTagData(isBlindRefund)
+    addEMVTagData(ISMOCKEDREFUND)
     
     if len(POS_ENTRY_MODE) > 0 and POS_ENTRY_MODE == 'contactless=y':
         tclink.PushNameValue("emv_kernel_version="+EMV_CLESS_KERNEL_VERSION)
@@ -795,7 +803,7 @@ def processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION, isBli
 
 def processPINTransaction(encryptedPIN, ksn, EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION):
     global DEVICE_SERIAL, DEVICE_UNATTENDED, ENCRYPTED_TRACK_IV, ENCRYPTED_TRACK_KSN, ENCRYPTED_TRACK_DATA, EMV_TAGS
-    print("Encrypted pin/ksn", encryptedPIN, ksn)
+    print("TCLINK-CORE Encrypted pin/ksn", encryptedPIN, ksn)
     if len(encryptedPIN) and len(ksn):
         tclink.PushNameValue("pin=" + encryptedPIN + ksn)
     tclink.PushNameValue("emv_device_capable=y")
@@ -862,4 +870,9 @@ def SetTrack2NonCompliantLength(aid, track2Data, cryptogram):
             if len(track2Data) >= 19 and cryptogram != b'\x00':
                 TRACK2_NON_COMPLIANT_LENGTH = True
 
+
+def ForceTagDF52OnlinePin():
+    global FORCE_TAG_DF52_ONLINEPIN
+    FORCE_TAG_DF52_ONLINEPIN = True
+    
 # -------------------------------------------------------------------------------------- #

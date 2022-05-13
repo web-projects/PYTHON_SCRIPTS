@@ -67,12 +67,13 @@ def processReset():
    status, buf, uns = getAnswer()        
 
    # close cless reader
+   # THIS ACTION WILL REMOVE THE CLESS STATUS INDICATOR BAR FROM THE BOTTOM OF THE SCREEN
    closeContactlessReader()
 
    #Reset display - regardless of tx type
    conn.send([0xD2, 0x01, 0x01, 0x00])
    log.log('*** RESET DISPLAY ***')
-   status, buf, uns = getAnswer()        
+   status, buf, uns = getAnswer()
 
 if __name__ == '__main__':
     log = getSyslog()

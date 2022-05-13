@@ -24,7 +24,7 @@ import TC_TransactionHelper
 from testharness.tlvparser import TLVPrepare
 
 # pip install pyperclip
-import pyperclip
+#import pyperclip
 
 # ---------------------------------------------------------------------------- #
 # GLOBALS
@@ -140,7 +140,7 @@ EMV_VERIFICATION = 0
 
 # CONTACTLESS CARD WORKFLOWS
 ENABLE_EMV_CONTACTLESS = True
-AID_SELECTION_ENABLED = True
+AID_SELECTION_ENABLED = False
 
 # VIPA VERSION_LBL
 VIPA_VAS_VER = '6.8.2.17'
@@ -1326,7 +1326,7 @@ def displayEncryptedTrack(tlv):
         if len(ksn) and len(iv) and len(vipa):
           tclinkStr = 'TVP|ksn:' + ksn + '|iv:' + iv + '|vipa:' + vipa 
           log.logerr(tclinkStr)
-          pyperclip.copy(tclinkStr)
+          #pyperclip.copy(tclinkStr)
           
         encryptionStatusIndex = sRED.find('DFDB0F')
         if encryptionStatusIndex != -1:
@@ -1397,7 +1397,7 @@ def startContactless(preferredAID=''):
 
     # Start Contactless transaction
     start_ctls_tag = [
-        [(0x9C), TRANSACTION_TYPE],     # transaction type
+        #[(0x9C), TRANSACTION_TYPE],     # transaction type
         [(0x9F, 0x02), AMOUNT],         # amount
         [(0x9F, 0x03), AMTOTHER],       # cashback
         [(0x9A), DATE],                 # system date

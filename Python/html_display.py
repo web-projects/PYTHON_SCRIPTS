@@ -96,7 +96,8 @@ def htmlEntry():
     html_resource = b'mapp/message.html'
     
     #html_resource = b'mapp/status_bar.html'
-    title   = b'<tr><td>VERIFY AMOUNT</td></tr>'
+    #title   = b'<tr><td>VERIFY AMOUNT</td></tr>'
+    title = b'VERIFY AMOUNT'
     message = b'Total....$99999.99\n1. Yes\n2. No'
     logo = b'signature.png'
 

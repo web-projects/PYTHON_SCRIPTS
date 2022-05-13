@@ -248,10 +248,14 @@ import re
 #
 # 1. Added DISCOVER US-DEBIT AID A0000001524010 to kernel reporting logic.
 # 
-VERSION_LBL = '1.0.0.44'
+#VERSION_LBL = '1.0.0.44'
 #
 # 1. Fixed TC_TCLink.processPINTransaction missing argument.
 # 
+VERSION_LBL = '1.0.0.45'
+#
+# 1. Add TAG DF52 for CDET for CASHBACK Transactions as a requirement.
+#
 # ----------------------------------------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------- #
@@ -290,7 +294,7 @@ TRANSACTION_TYPE = b'\x00'  # SALE TRANSACTION
 #TRANSACTION_TYPE = b'\x30'  # BALANCE INQUIRY
 #BALANCE INQUIRY - MTIP06_10_01_15A, MTIP06_12_01_15A
 ISCASHBACK = TRANSACTION_TYPE == b'\x09'
-ISBLINDREFUND = False
+ISMOCKEDREFUND = False
 ISBALANCEINQUIRY = TRANSACTION_TYPE == b'\x30'
 AMOUNTFORINQUIRY = b'\x00\x00\x00\x00\x00\x00'
 ISVOIDTRANSACTION = False
@@ -303,7 +307,7 @@ TransactionType = {
     4: [b'\x20', "RETURN / REFUND"],
     5: [b'\x30', "BALANCE INQUIRY"],
     6: [b'\x31', "RESERVATION"],
-    7: [b'\x20', "* BLIND REFUND MOCK *"],
+    7: [b'\x20', "* REFUND MOCK *"],
 }
 TransactionTitle = 'SELECT TYPE:'
 
@@ -1673,7 +1677,7 @@ def processEMV(tid):
         [(0xDF, 0xA2, 0x04), b'\x00' if APPLICATION_SELECTION_POS else b'\x01'] # External Application Selection (POS)
     ]
 
-    if ONLINE == 'y': 
+    if ONLINE == 'y':
         # When DFDF0D is not provided, transaction is performed offline.
         # When DFDF0D is provided with value 1, transaction is forced online and TVR byte 4 bit 4 is set.
         # When DFDF0D is provided with value 2, transaction is not forced online.
@@ -1867,7 +1871,7 @@ def processEMV(tid):
                 #TC_TransactionHelper.vspDecrypt(tlv, tid, log)
                 #TC_TransactionHelper.displayEncryptedTrack(tlv, log)
                 #TC_TransactionHelper.displayHMACPAN(tlv, log)
-                TC_TCLink.saveEMVData(tlv, 0xE3, ISCASHBACK, ISBLINDREFUND)
+                TC_TCLink.saveEMVData(tlv, 0xE3, ISCASHBACK, ISMOCKEDREFUND)
                         
             if tlv.tagCount(0xE4):
 
@@ -1933,8 +1937,8 @@ def processEMV(tid):
                 break
 
             if tlv.tagCount(0xE3):
-                if ISBLINDREFUND:
-                    log.log("Transaction is blind refund")
+                if ISMOCKEDREFUND:
+                    log.log("Transaction is mocked refund")
                     TC_TCLink.saveCardData(tlv)
                     TC_TCLink.saveEMVData(tlv, 0xE3, ISCASHBACK, True)
                     # dynamic validation for MasterCard above floor limit and CVM
@@ -2304,7 +2308,7 @@ def processTransaction(args):
                         TC_TransactionHelper.vspDecrypt(tlv, tid, log)
                         TC_TransactionHelper.displayEncryptedTrack(tlv, log)
                         TC_TransactionHelper.displayHMACPAN(tlv, log)
-                        TC_TCLink.saveEMVData(tlv, 0xE3, ISCASHBACK, ISBLINDREFUND)
+                        TC_TCLink.saveEMVData(tlv, 0xE3, ISCASHBACK, ISMOCKEDREFUND)
                         tranType = 4
                     break
 
@@ -2357,6 +2361,7 @@ def processTransaction(args):
                         # regardless of what CVM method might be indicated in the CTQ (tag '9F6C')
                         if TRANSACTION_TYPE == b'\x09' and cvm_value != "ONLINE PIN":
                             encrypted_pin = 0x02
+                            TC_TCLink.ForceTagDF52OnlinePin()
 
                         if encrypted_pin == 0x02:
                             return OnlinePinTransaction(tlv, cardState, setFirstGenContinueTransaction())
@@ -2560,16 +2565,16 @@ def processTransaction(args):
                 getPINEntry(tlv)
             # DISPLAY [D2 01] - Processing Transaction
             conn.send([0xD2, 0x01, 0x02, 0x01])
-            response = TC_TCLink.processMSRTransaction(OnlineEncryptedPIN, OnlinePinKSN, args.action == 'credit', ISBLINDREFUND)
+            response = TC_TCLink.processMSRTransaction(OnlineEncryptedPIN, OnlinePinKSN, args.action == 'credit', ISMOCKEDREFUND)
         # Check for contactless magstripe
         elif tranType == 3:
             response = TC_TCLink.processCLessMagstripeTransaction()
         # Check for Offline approve/decline
         elif tranType == 4:  # Should tags be captured for an Offline Decline case and sent to TCLink?
-            response = TC_TCLink.processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION, ISBLINDREFUND)
+            response = TC_TCLink.processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION, ISMOCKEDREFUND)
         # Check for CLess
         elif tranType == 5:
-            response = TC_TCLink.processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION, ISBLINDREFUND)
+            response = TC_TCLink.processEMVTransaction(EMV_L2_KERNEL_VERSION, EMV_CLESS_KERNEL_VERSION, ISMOCKEDREFUND)
         # online PIN transaction
         elif tranType == 6:
             log.log('PROCESS ONLINE PIN TRANSACTION: -------------------------------------------------------------------')
@@ -2701,13 +2706,13 @@ if __name__ == '__main__':
             ONLINE = 'y'
 
     if TRANSACTION_TYPE == b'\x20':
-        ISBLINDREFUND = True if transactionType == 7 else False
+        ISMOCKEDREFUND = True if transactionType == 7 else False
         transId = TC_TCLink.getTransIdFromFile()
         if len(transId) == 0:
             log.logerr('CANNOT ISSUE REFUND: NO TRANSACTION HAS YET BEEN RUN.')
             exit(0)
         log.logwarning('LAST TRANSACTION ID: ' + transId)
-        if ISBLINDREFUND:
+        if ISMOCKEDREFUND:
             args.action = "credit2"
         else:
             args.action = "credit"
@@ -2771,10 +2776,11 @@ if __name__ == '__main__':
     while True:
         utility.do_testharness()
         exit(0)
-        TransactionAmount = input("Ctrl+C to quit or ENTER NEW AMOUNT (" + str(args.amount) + "): ")
-        if len(TransactionAmount) > 1 or ISBALANCEINQUIRY:
-            value = int(TransactionAmount)
-            if value > 0 or ISBALANCEINQUIRY:
-                args.amount = value
+        ### for debugging purposes only ###
+        #TransactionAmount = input("Ctrl+C to quit or ENTER NEW AMOUNT (" + str(args.amount) + "): ")
+        #if len(TransactionAmount) > 1 or ISBALANCEINQUIRY:
+        #    value = int(TransactionAmount)
+        #    if value > 0 or ISBALANCEINQUIRY:
+        #        args.amount = value
                 
 # -------------------------------------------------------------------------------------- #

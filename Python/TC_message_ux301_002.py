@@ -6,7 +6,7 @@ import linecache
 from testharness.syslog import getSyslog
 from testharness.utility import check_status_error
 from binascii import hexlify, unhexlify
-from time import sleep
+
 
 def traceit(frame, event, arg):
     if event == "line":
@@ -72,13 +72,8 @@ def processRequest():
    # keyboard reader
    #setupKeyboardReader()
  
-   title = b'Transaction Status'
-   
    text_style_0 = b'Template Var 0 '
-   #message_0 = b'Payment could not be processed. Payment cancelled by user.'
-   #message_0 = b'AVS Rule sets limit on payment amount'
-   #message_0 = b'Device has timed out due to inactivity.'
-   message_0 = b'Payment canceled. Error reading card, maximum number of swipes and inserts has been reached.'
+   message_0 = b'Payment could not be processed. Payment cancelled by user.'
    
    text_style_1 = b'style=\"text-align:center; font-size: 24px;\"'
    message_1 = b'MESSAGE LINE 2'
@@ -91,14 +86,13 @@ def processRequest():
    
    ''' html resource data '''
    html_file = b'mapp/display_message.html'
-   # putfile.py --file upload/html/ux301/display_message.html --rfile www/mapp/display_message.html --serial COM9
    html_tags = [
       [(0xDF, 0xAA, 0x01), html_file],
-      #[(0xDF, 0xA2, 0x11), title],
-      [(0xDF, 0xAA, 0x02), b'TEMPLATE_TITLE0'],  [(0xDF, 0xAA, 0x03), title],
-      #[(0xDF, 0xAA, 0x02), b'title_text'],  [(0xDF, 0xAA, 0x03), title],
       #[(0xDF, 0xAA, 0x02), b'TEMPLATE_STYLE0'], [(0xDF, 0xAA, 0x03), b'style=\"font-size: 18px;\"'],
-      [(0xDF, 0xAA, 0x02), b'TEMPLATE_TEXT0'],  [(0xDF, 0xAA, 0x03), message_0]
+	  #[(0xDF, 0xAA, 0x02), b'TEMPLATE_TITLESTYLE0'], [(0xDF, 0xAA, 0x03), b'style=\"background-color: rgb(4, 255, 0);\"'],
+	  [(0xDF, 0xAA, 0x02), b'TEMPLATE_TITLE0'], [(0xDF, 0xAA, 0x03), b'Transaction Status'],
+      [(0xDF, 0xAA, 0x02), b'TEMPLATE_TEXT0'], [(0xDF, 0xAA, 0x03), message_0]
+	  
       #[(0xDF, 0xAA, 0x02), b'TEMPLATE_TEXT1'], [(0xDF, 0xAA, 0x03), message_0]
       #[(0xDF, 0xAA, 0x02), b'TEMPLATE_VAR2'], [(0xDF, 0xAA, 0x03), text_style_1],
       #[(0xDF, 0xAA, 0x02), b'TEMPLATE_VAR3'], [(0xDF, 0xAA, 0x03), message_1],
@@ -116,17 +110,10 @@ def processRequest():
    check_status_error( status )
 
    ''' Reset display '''
-   set_idle = True
-   if set_idle == True:
-    #sleep(3)
-    status = 0x9FFF
-    while status == 0x9FFF:
-      # another read will remove the HTML command from the queue
-      status, buf, uns = conn.receive()
-      conn.send( [0xD2, 0x01, 0x01, 0x00] )
-      status, buf, uns = conn.receive()
-      log.log(status)
-      log.log(status == 0x9FFF)
+   #conn.send( [0xD2, 0x01, 0x01, 0x00] )
+   #status, buf, uns = conn.receive()
+   #check_status_error( status )
+
 
 if __name__ == '__main__':
 
