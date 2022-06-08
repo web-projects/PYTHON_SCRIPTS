@@ -27,7 +27,7 @@ import os.path
 from os import path
 
 # pip install pyperclip
-#import pyperclip
+import pyperclip
 
 # ---------------------------------------------------------------------------- #
 # GLOBALS
@@ -213,7 +213,7 @@ def displayEncryptedTrack(tlv, log):
                     if len(ksn) and len(iv) and len(vipa):
                         tclinkStr = 'TVP|ksn:' + ksn + '|iv:' + iv + '|vipa:' + vipa 
                         log.logerr(tclinkStr)
-                        #pyperclip.copy(tclinkStr)
+                        pyperclip.copy(tclinkStr)
                             
                     return True
     return False
@@ -375,7 +375,7 @@ def displayEncryptedTrack(tlv, log):
         if len(ksn) and len(iv) and len(vipa):
             tclinkStr = 'TVP|ksn:' + ksn + '|iv:' + iv + '|vipa:' + vipa 
             log.logerr(tclinkStr)
-            #pyperclip.copy(tclinkStr)
+            pyperclip.copy(tclinkStr)
             
         encryptionStatusIndex = sRED.find('DFDB0F')
         if encryptionStatusIndex != -1:

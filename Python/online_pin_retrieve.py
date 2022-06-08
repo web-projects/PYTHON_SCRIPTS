@@ -378,7 +378,7 @@ def encrypt_pvk_with_master(master_key, kcv, pvk):
         print("master key is invalid")
         return None
     return EDE_operation(master_key, pvk)
-    
+
 
 def update_key_command(conn, host_id, pvk_enc):
     log.log("Updating the PVK using Master session key, host_id is", host_id)
@@ -478,10 +478,7 @@ def retrieveOnlinePIN():
     check_status_error( status )
       
   #Send clear display
-  conn.send([0xD2, 0x01, 0x00, 0x01], '
-\tRetrieving
-
-\tONLINE PIN...')
+  conn.send([0xD2, 0x01, 0x00, 0x01], '\tRetrieving\tONLINE PIN...')
   status, buf, uns = getAnswer()
     
   OnlinePinInTemplateE6()

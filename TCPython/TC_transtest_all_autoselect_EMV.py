@@ -252,9 +252,13 @@ import re
 #
 # 1. Fixed TC_TCLink.processPINTransaction missing argument.
 # 
-VERSION_LBL = '1.0.0.45'
+#VERSION_LBL = '1.0.0.45'
 #
 # 1. Add TAG DF52 for CDET for CASHBACK Transactions as a requirement.
+# 
+VERSION_LBL = '1.0.0.46'
+#
+# 1. Add TSYS ONLINE PN Decline code 55 to process pin retries.
 #
 # ----------------------------------------------------------------------------------------------------------
 
@@ -399,7 +403,8 @@ OnlinePinContinueTPL = []
 OFFLINERESPONSE = ""
 
 # FISERVER INVALID PIN RESULT CODE
-ONLINEPIN_INVALID = 117
+TSYS_ONLINEPIN_INVALID = 55
+FDRC_ONLINEPIN_INVALID = 117
 
 # DISPLAY MESSAGES
 DM_9F0D = "INTERNAL ERROR\n\t-\n\tTAG DFDF30"
@@ -1866,7 +1871,6 @@ def processEMV(tid):
                     if cvm_value == "SIGNATURE":
                         SIGN_RECEIPT = True
 
-
             if tlv.tagCount(0xE2):
                 #TC_TransactionHelper.vspDecrypt(tlv, tid, log)
                 #TC_TransactionHelper.displayEncryptedTrack(tlv, log)
@@ -2595,7 +2599,7 @@ def processTransaction(args):
                     # FISERV RESPONSE CODE: 117 - Incorrect PIN or PIN length error
                     if len(responseCode):
                         code = int(responseCode)
-                        if code == ONLINEPIN_INVALID:
+                        if code == FDRC_ONLINEPIN_INVALID or code == TSYS_ONLINEPIN_INVALID:
                             displayMsg('Invalid PIN:' + response, 3)
                             nextstep = OnlinePinTransaction(tlv, cardState, OnlinePinContinueTPL, 1, True)
                             if nextstep == -1:
