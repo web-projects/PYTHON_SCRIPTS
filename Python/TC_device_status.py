@@ -57,6 +57,8 @@ def processReset():
    #    Bit 4 - BEEP DURING RESET
    conn.send([0xD0, 0x00, 0x00, 0x09])
    status, buf, uns = getAnswer()
+   exit(0)
+
    tlv = TLVParser(buf)
    tid = tlv.getTag((0x9F, 0x1E))
    type = tlv.getTag((0xDF, 0x0D))

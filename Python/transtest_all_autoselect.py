@@ -140,7 +140,7 @@ EMV_VERIFICATION = 0
 
 # CONTACTLESS CARD WORKFLOWS
 ENABLE_EMV_CONTACTLESS = True
-AID_SELECTION_ENABLED = False
+AID_SELECTION_ENABLED = True
 
 # VIPA VERSION_LBL
 VIPA_VAS_VER = '6.8.2.17'
@@ -1168,7 +1168,7 @@ def processEMV(tid):
                 # Terminal Capabilites
                 appLabel = TC_TransactionHelper.reportTerminalCapabilities(tlv, log)
                 if len(appLabel):
-                  displayMsg('\t*** APPLICATION ***\t' + appLabel.decode('iso8859-1'), 3)
+                  displayMsg('\t*** APPLICATION ***\n\t' + appLabel.decode('iso8859-1'), 3)
 
                 # HMAC PAN
                 displayHMACPAN(tlv)
@@ -1218,7 +1218,7 @@ def processEMV(tid):
        # Terminal Capabilites
        appLabel = TC_TransactionHelper.reportTerminalCapabilities(tlv, log)
        if len(appLabel):
-          displayMsg('\t*** APPLICATION ***\t' + appLabel.decode('iso8859-1'), 3)
+          displayMsg('\t*** APPLICATION ***\n\t' + appLabel.decode('iso8859-1'), 3)
 
        # HMAC PAN
        displayHMACPAN(tlv)
@@ -1407,6 +1407,12 @@ def startContactless(preferredAID=''):
         #[(0xDF, 0xDF, 0x0D), b'\x01'], # Force transaction online
         CURRENCY_CODE,                  # currency code
         COUNTRY_CODE,                   # country code
+        # PRESWIPE
+        #[(0xDF, 0xAA, 0x02), b'TEMPLATE_TITLE0'], [(0xDF, 0xAA, 0x03), b' '],
+        #[(0xDF, 0xAA, 0x02), b'TEMPLATE_TITLE0'], [(0xDF, 0xAA, 0x03), b'Preswipe Card'],
+        #[(0xDF, 0xAA, 0x02), b'TEMPLATE_TITLE0'], [(0xDF, 0xAA, 0x03), b'The Quick Brown Fox Jumped over The Lazy Dog'],
+        #[(0xDF, 0xAA, 0x02), b'TEMPLATE_TITLE0'], [(0xDF, 0xAA, 0x03), b'The Quick Brown Fox Jumped over'],
+        [(0xDF, 0xAA, 0x02), b'text'], [(0xDF, 0xAA, 0x03), b'Insert'],
         #AUTHRESPONSECODE,
         # quick chip as option for NO-PIN M/C Test Case MTIP-51.Test01.Scenario.01f
         QUICKCHIP_ENABLED if USE_QUICKCHIP_MODE else QUICKCHIP_DISABLED
@@ -1910,7 +1916,7 @@ def processTransaction(args):
                     # Terminal Capabilites
                     appLabel = TC_TransactionHelper.reportTerminalCapabilities(tlv, log)
                     if len(appLabel):
-                      displayMsg('\t*** APPLICATION ***\t' + appLabel.decode('iso8859-1'), 3)
+                      displayMsg('\t*** APPLICATION ***\n\t' + appLabel.decode('iso8859-1'), 3)
                 
                     cvm_value = getCVMResult(tlv)
                     # NOT AN EROR, JUST EASIER TO FIND IN THE TERMINAL OUTPUT

@@ -13,7 +13,7 @@ from testharness.utility import check_status_error
 from binascii import hexlify, unhexlify
 
 # pip install pyperclip
-import pyperclip
+#import pyperclip
 
 # P1
 ENTRY_PAN            = 1 << 0
@@ -75,7 +75,7 @@ def tclinkFormat(tlv):
   # TVP|ksn:|iv:|vipa:|
   tclinkStr = 'TVP|ksn:' + ksn + '|iv:' + iv + '|vipa:' + vipa 
   log.logerr(tclinkStr)
-  pyperclip.copy(tclinkStr)
+  #pyperclip.copy(tclinkStr)
 
 def displayHMACPAN(tlv):
   sRedTag = tlv.tagCount((0xFF, 0x7C))
@@ -155,23 +155,23 @@ def processManualEntry():
     # Customized title 'Enter Card Number'
     manual_entry_custom_tag = [
       [ (0xDF, 0xAA, 0x02), b'TEMPLATE_INPUT_TYPE' ],   [ (0xDF, 0xAA, 0x03), b'text' ],
-      [ (0xDF, 0xAA, 0x02), b'allowed_chars' ],         [ (0xDF, 0xAA, 0x03), b'0123456789' ],
       [ (0xDF, 0xAA, 0x02), b'input_precision' ],       [ (0xDF, 0xAA, 0x03), b'0' ],
-      [ (0xDF, 0xAA, 0x02), b'max_length' ],            [ (0xDF, 0xAA, 0x03), b'16' ],
       [ (0xDF, 0xAA, 0x02), b'entry_mode_visibility' ], [ (0xDF, 0xAA, 0x03), b'hidden' ],
       [ (0xDF, 0xAA, 0x02), b'timeout' ],               [ (0xDF, 0xAA, 0x03), b'60' ],
-      #[ (0xDF, 0xAA, 0x02), b'tsep' ],                  [ (0xDF, 0xAA, 0x03), b'' ],
-      # PAN ENTRY: "Enter Card PAN"
+      [ (0xDF, 0xAA, 0x02), b'allowed_chars' ],         [ (0xDF, 0xAA, 0x03), b'0123456789' ],
+      ### -- PAN ENTRY: "Enter Card PAN"
       [ (0xDF, 0xAA, 0x01), target_html ],
       [ (0xDF, 0xAA, 0x02), b'title_text' ],            [ (0xDF, 0xAA, 0x03), b'Enter Card Number' ],
-      # EXPIRY: "Enter Card Expiry"
+      #[ (0xDF, 0xAA, 0x02), b'max_length' ],            [ (0xDF, 0xAA, 0x03), b'16' ],
+      ### --- EXPIRY: "Enter Card Expiry"
       [ (0xDF, 0xAA, 0x01), target_html ],
       [ (0xDF, 0xAA, 0x02), b'title_text' ],            [ (0xDF, 0xAA, 0x03), b'Enter Card Expiry' ],
-      # CVV2 ENTRY: "Enter Card CVV2/CVC2/CID"
-      [ (0xDF, 0xAA, 0x01), target_html ],
-      [ (0xDF, 0xAA, 0x02), b'title_text' ],           [ (0xDF, 0xAA, 0x03), b'Enter Card CVV2/CVC2/CID' ],
+      #[ (0xDF, 0xAA, 0x02), b'max_length' ],            [ (0xDF, 0xAA, 0x03), b'4' ],
+      ### --- CVV2 ENTRY: "Enter Card CVV2/CVC2/CID"
+      #[ (0xDF, 0xAA, 0x01), target_html ],
+      #[ (0xDF, 0xAA, 0x02), b'title_text' ],           [ (0xDF, 0xAA, 0x03), b'Enter Card CVV2/CVC2/CID' ],
       #
-      # Maximum length of the PAN number
+      ### --- Maximum length of the PAN number
       [ (0xDF, 0x83, 0x05), b'\x10' ]
     ]
     
@@ -190,8 +190,8 @@ def processManualEntry():
     # Bit 1 - Application Expiration Date entry
     # Bit 2 - Application Effective Date entry
     # Bit 3 - CVV2 / CID entry (up to 4 characters)
-    p1 = ENTRY_PAN | ENTRY_EXPIRY_DATE | ENTRY_CVV2
-    #p1 = ENTRY_PAN | ENTRY_EXPIRY_DATE
+    #p1 = ENTRY_PAN | ENTRY_EXPIRY_DATE | ENTRY_CVV2
+    p1 = ENTRY_PAN | ENTRY_EXPIRY_DATE
     #p1 = ENTRY_PAN
     
     # P2
